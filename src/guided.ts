@@ -20,6 +20,7 @@ import { reviewItems } from "./delivery/approvals.js";
 import { SKILLS_DIR } from "./skills/index.js";
 import { listQueriesText, queryWizard, removeQuery } from "./queries/wizard.js";
 import { refreshArtifacts } from "./generation.js";
+import { createKey, loadKeys, revokeKey } from "./delivery/keys.js";
 import { writeReport } from "./report/html.js";
 
 const ICON: Record<StageState, string> = {
@@ -214,11 +215,19 @@ async function run(ws: Workspace, action: Action, p: Prompter): Promise<void> {
       }
       break;
     }
-    case "aprovar":
-      console.log(ui.bold("\nRevisar e aprovar"));
-      console.log("Cada skill, o perfil da empresa e cada ferramenta do servidor passam por você. O agente só usa o que for aprovado.");
+    case "aprovar": {
+      console.log(ui.bold("\nRevisar e entregar"));
+      console.log(`  ${ui.cyan("1")}. Revisar e aprovar ${ui.dim("(skills, perfil, ferramentas e consultas)")}`);
+      console.log(`  ${ui.cyan("2")}. Acesso pela rede ${ui.dim(`(chaves para vários colaboradores: ${loadKeys(ws).length})`)}`);
+      const opt = (await p.ask("Qual? (Enter = 1) > "))?.trim() || "1";
+      if (opt === "2") {
+        await keysFlow(ws, p);
+        break;
+      }
+      console.log("Cada item passa por você. O agente só usa o que for aprovado.");
       await reviewAction(ws);
       break;
+    }
     case "pendencias":
       if (listQuestions(ws) > 0 && (await p.confirm("\nResponder agora?"))) await answerQuestions(ws);
       break;
@@ -227,6 +236,40 @@ async function run(ws: Workspace, action: Action, p: Prompter): Promise<void> {
       console.log(`\nRelatório atualizado: ${path}`);
       openFile(path);
       break;
+    }
+  }
+}
+
+/** Chaves de acesso do modo HTTP: criar (mostra uma vez), listar, revogar. */
+async function keysFlow(ws: Workspace, p: Prompter): Promise<void> {
+  console.log(ui.bold("\nAcesso pela rede (modo HTTP)"));
+  console.log("No modo HTTP, o servidor atende vários colaboradores ao mesmo tempo (Teams, intranet...).");
+  console.log("Cada pessoa ou aplicação usa uma chave própria; a auditoria registra quem perguntou o quê.");
+  const keys = loadKeys(ws);
+  console.log(ui.dim(`\nChaves atuais: ${keys.length ? keys.map((k) => `${k.nome} (criada em ${new Date(k.criadaEm).toLocaleDateString("pt-BR")})`).join(", ") : "nenhuma"}`));
+  console.log(`  ${ui.cyan("1")}. Criar chave`);
+  console.log(`  ${ui.cyan("2")}. Revogar chave`);
+  const opt = (await p.ask("Qual? (Enter = voltar) > "))?.trim();
+  if (opt === "1") {
+    const name = (await p.ask("Para quem é a chave? (ex.: teams, intranet, maria-rh) > "))?.trim();
+    if (!name) return;
+    try {
+      const token = createKey(ws, name);
+      refreshArtifacts(ws);
+      console.log(ui.green("\n✓ Chave criada. Copie AGORA: ela não será mostrada de novo."));
+      console.log(`\n  ${ui.bold(token)}\n`);
+      console.log(ui.dim("Entregue por um canal seguro. Se perder, revogue e crie outra. Reinicie o servidor HTTP para valer."));
+    } catch (e) {
+      console.log(ui.yellow((e as Error).message));
+    }
+  } else if (opt === "2") {
+    if (!keys.length) return;
+    keys.forEach((k, i) => console.log(`  ${ui.cyan(String(i + 1))}. ${k.nome}`));
+    const k = keys[Number((await p.ask("Qual revogar? > "))?.trim()) - 1];
+    if (k && (await p.confirm(`Revogar "${k.nome}"? Quem usa essa chave perde o acesso.`, false))) {
+      revokeKey(ws, k.nome);
+      refreshArtifacts(ws);
+      console.log(ui.green("✓ Revogada. Reinicie o servidor HTTP para valer."));
     }
   }
 }
@@ -390,7 +433,7 @@ export async function guided(): Promise<void> {
     console.log(`  ${ui.cyan("2")}. Entrevista sobre o negócio`);
     console.log(`  ${ui.cyan("3")}. Mapear a tecnologia (computador, rede ou bancos)`);
     console.log(`  ${ui.cyan("4")}. Montar o agente (skills e consultas aos sistemas)`);
-    console.log(`  ${ui.cyan("5")}. Revisar e aprovar (servidor MCP)`);
+    console.log(`  ${ui.cyan("5")}. Revisar e entregar (aprovar; acesso pela rede)`);
     console.log(`  ${ui.cyan("6")}. Ver e responder pendências`);
     console.log(`  ${ui.cyan("7")}. Abrir o relatório no navegador`);
     console.log(`  ${ui.cyan("8")}. Corrigir respostas da entrevista`);

@@ -70,6 +70,7 @@ src/
 ├── delivery/
 │   ├── tools.ts            catálogo de ferramentas do servidor (+ revisões)
 │   ├── approvals.ts        itens revisáveis, decisões e cópias aprovadas (aprovado/)
+│   ├── keys.ts             chaves de acesso do modo HTTP (só hash SHA-256 é guardado)
 │   └── server.ts           monta saida/servidor-mcp a partir do aprovado
 ├── signatures/
 │   ├── catalog.ts          catálogo de sistemas conhecidos
@@ -211,6 +212,7 @@ Edite `src/company/levels.ts`. Use um `id` estável (ele é a chave em `company.
 - [x] Coletor de bancos: estrutura de SQL Server e PostgreSQL, sem ler dados; senha só em memória; colunas sensíveis viram guardrails
 - [ ] Bancos Firebird, MySQL e Oracle
 - [x] Consultas aos sistemas: nomeadas, aprovadas por revisão, validadas 2x, parâmetros separados, transação somente leitura, mascaramento
-- [ ] Transporte HTTP (vários colaboradores) e ferramentas de escrita com confirmação humana
+- [x] Modo HTTP (Streamable HTTP, sem estado): chaves por pessoa, só localhost por padrão, HTTPS obrigatório na rede, DNS rebinding, limite por chave, auditoria com quem
+- [ ] Ferramentas de escrita com confirmação humana
 - [x] Coletor de rede: faixas autorizadas (digitar "autorizado"), TCP connect com limite, banners/HTTP, DNS reverso, ARP, diff entre varreduras
 - [ ] Coletor de bancos de dados (estrutura, somente leitura)

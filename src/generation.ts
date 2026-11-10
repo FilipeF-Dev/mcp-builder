@@ -18,6 +18,7 @@ import { writeNetworkContext } from "./collectors/network/context.js";
 import { writeDatabasesContext } from "./collectors/database/context.js";
 import { SERVER_DIR, serverEnabled, writeServer } from "./delivery/server.js";
 import { SERVER_REVISION } from "./delivery/tools.js";
+import { loadKeys } from "./delivery/keys.js";
 import { GUARDRAILS_PATH, SKILLS_DIR, loadContext, planSkills, skillsEnabled, writeGuardrails, writeSkill } from "./skills/index.js";
 
 export interface Generator {
@@ -86,7 +87,7 @@ export function currentGenerators(ws: Workspace): Generator[] {
       // Muda quando uma aprovação muda, quando as regras mudam ou quando o nome da empresa muda.
       dependsOn: ["aprovacao:", "empresa:nome", ...guardrails.dependsOn],
       // Inclui as consultas existentes: apagar ou trocar uma consulta também refaz o servidor.
-      revision: `servidor@${SERVER_REVISION};${guardrails.revision};consultas:${ws.loadQueries().queries.map((q) => `${q.id}@${q.revision}`).sort().join(",")}`,
+      revision: `servidor@${SERVER_REVISION};${guardrails.revision};consultas:${ws.loadQueries().queries.map((q) => `${q.id}@${q.revision}`).sort().join(",")};chaves:${loadKeys(ws).map((k) => `${k.nome}@${k.hash.slice(0, 8)}`).sort().join(",")}`,
       generate: writeServer,
     });
   }

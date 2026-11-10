@@ -81,6 +81,10 @@ As **consultas aos sistemas** têm várias camadas de proteção: o agente não 
 
 O servidor entregue na etapa 5 aplica as regras também em código: só existe para o agente o que o TI aprovou; CPF, CNPJ, números de cartão e senhas são mascarados em toda resposta; e cada consulta fica registrada em `logs/` (com os argumentos já mascarados). Detalhes em [Servidor MCP](10-servidor-mcp.md).
 
+## Modo HTTP (vários colaboradores)
+
+No modo HTTP, cada pessoa ou aplicação usa uma chave própria (o servidor guarda só o hash). O servidor atende só o próprio computador por padrão, exige HTTPS para abrir na rede e registra quem fez cada consulta. Detalhes em [Acesso pela rede](12-acesso-pela-rede.md).
+
 ## O assistente que será construído
 
 As regras de segurança do assistente (guardrails) são definidas no **nível 6 da entrevista**: o que ele pode fazer, o que nunca pode fazer e quais dados são sensíveis. O padrão será sempre:

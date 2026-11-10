@@ -24,7 +24,7 @@ Depois é só seguir o menu. Na dúvida, escolha **1. Continuar**.
 | 2. Mapear a tecnologia | Análise somente leitura dos computadores, da rede (com autorização) e da estrutura dos bancos | ✅ computadores, rede e bancos |
 | 3. Resolver pendências | O que a ferramenta não entendeu vira pergunta para uma pessoa | ✅ |
 | 4. Montar o agente | Skills e regras de segurança (fixas e adaptadas) + consultas somente leitura aos sistemas | ✅ |
-| 5. Revisar e entregar | O TI aprova item a item; o servidor MCP é montado só com o aprovado, pronto para o Claude | ✅ |
+| 5. Revisar e entregar | O TI aprova item a item; o servidor MCP é montado só com o aprovado: no Claude Desktop ou pela rede, para vários colaboradores | ✅ |
 
 A cada passo, um **relatório no navegador** mostra onde você está, o que já se sabe e o que falta.
 
@@ -45,6 +45,7 @@ Entenda a lógica: **[Como funciona](docs/02-como-funciona.md)**
 | [Skills](docs/09-skills.md) | Todos: o que o agente sabe fazer, e por quê |
 | [Servidor MCP](docs/10-servidor-mcp.md) | TI: revisar, aprovar e conectar o agente ao Claude |
 | [Consultas aos sistemas](docs/11-consultas.md) | TI: o agente responder com dados, com segurança |
+| [Acesso pela rede](docs/12-acesso-pela-rede.md) | TI: o agente atender vários colaboradores (HTTP, chaves, HTTPS) |
 | [Frentes do projeto](docs/frentes.md) | Quem acompanha a evolução do projeto |
 | [Para desenvolvedores](docs/para-desenvolvedores.md) | Quem vai estender a ferramenta |
 

@@ -17,6 +17,7 @@ import { writeReport } from "./report/html.js";
 import { guided, openFile } from "./guided.js";
 import { listQueriesText, queryWizard, removeQuery } from "./queries/wizard.js";
 import { refreshArtifacts } from "./generation.js";
+import { createKey, loadKeys, revokeKey } from "./delivery/keys.js";
 import { DEFAULT_PORT, type Engine } from "./collectors/database/readers.js";
 
 const program = new Command();
@@ -143,6 +144,42 @@ consultas
       console.log(ui.yellow(`Consulta ${id} não encontrada.`));
       process.exitCode = 1;
     }
+  });
+
+const servidor = program.command("servidor").description("servidor MCP: chaves de acesso do modo HTTP");
+const chave = servidor.command("chave").description("chaves de acesso do modo HTTP (uma por pessoa ou aplicação)");
+chave
+  .command("nova")
+  .argument("<nome>", "para quem é (ex.: teams, intranet, maria-rh)")
+  .description("cria uma chave e mostra uma única vez")
+  .action((nome: string) => {
+    const w = ws();
+    const token = createKey(w, nome);
+    refreshArtifacts(w);
+    console.log(ui.green("Chave criada. Copie agora: ela não será mostrada de novo."));
+    console.log(token);
+  });
+chave
+  .command("listar", { isDefault: true })
+  .description("lista as chaves (só nomes e datas)")
+  .action(() => {
+    const keys = loadKeys(ws());
+    if (!keys.length) console.log("Nenhuma chave.");
+    for (const k of keys) console.log(`${k.nome}  ${ui.dim(new Date(k.criadaEm).toLocaleString("pt-BR"))}`);
+  });
+chave
+  .command("revogar")
+  .argument("<nome>", "nome da chave")
+  .description("revoga uma chave")
+  .action((nome: string) => {
+    const w = ws();
+    if (!revokeKey(w, nome)) {
+      console.log(ui.yellow(`Chave ${nome} não encontrada.`));
+      process.exitCode = 1;
+      return;
+    }
+    refreshArtifacts(w);
+    console.log(ui.green(`Chave ${nome} revogada. Reinicie o servidor HTTP para valer.`));
   });
 
 program

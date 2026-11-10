@@ -15,7 +15,7 @@ flowchart LR
 | **A. Descoberta** | Entrevista, coletores (computadores, rede, bancos, e-mail, nuvem), pendências | Entrevista ✅ · computadores ✅ · rede ✅ · bancos ✅ (SQL Server, PostgreSQL) |
 | **B. Conhecimento** | Fatos, histórico, comparação entre análises, geração incremental | ✅ base pronta |
 | **C. Skills** | Modelos que geram as skills e as regras do agente: fixos (LGPD...) e adaptáveis | ✅ 4 fixos + 5 adaptáveis · 🔜 mais modelos |
-| **D. Entrega** | Servidor MCP gerado, guardrails aplicados, aprovação item a item pelo TI | ✅ conhecimento aprovado e consultas aos sistemas (somente leitura) |
+| **D. Entrega** | Servidor MCP gerado, guardrails aplicados, aprovação item a item pelo TI | ✅ conhecimento aprovado, consultas aos sistemas e modo HTTP para vários colaboradores |
 | **E. Experiência** | Modo guiado, atalho de dois cliques, relatório, documentação para leigos | ✅ contínua |
 
 ---
@@ -81,7 +81,6 @@ Feito:
 Próximos passos:
 
 - Ferramentas de escrita (ex.: abrir chamado de verdade) com confirmação humana a cada uso
-- Transporte HTTP para uso por vários colaboradores (Teams, intranet)
 
 ## E. Experiência
 

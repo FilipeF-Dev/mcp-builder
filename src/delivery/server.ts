@@ -18,6 +18,7 @@ import type { Workspace } from "../core/workspace.js";
 import { QuerySchema } from "../core/schema.js";
 import { GUARDRAILS_PATH, loadContext, planSkills } from "../skills/index.js";
 import { SERVER_REVISION, TOOLS } from "./tools.js";
+import { loadKeys } from "./keys.js";
 
 export const SERVER_DIR = "saida/servidor-mcp";
 const TEMPLATE = fileURLToPath(new URL("../../templates/servidor-mcp/servidor.js", import.meta.url));
@@ -117,12 +118,31 @@ export function writeServer(ws: Workspace): void {
   );
   writeFileSync(join(out, "instalar.bat"), "@echo off\r\ncd /d \"%~dp0\"\r\necho Instalando o servidor MCP...\r\ncall npm install --no-fund --no-audit --loglevel=error\r\nif errorlevel 1 (echo Falhou. Veja a mensagem acima. & pause & exit /b 1)\r\necho.\r\necho Pronto! Veja o LEIA-ME.md para conectar ao Claude.\r\npause\r\n");
   writeFileSync(join(out, "instalar.sh"), '#!/usr/bin/env sh\ncd "$(dirname "$0")" || exit 1\nnpm install --no-fund --no-audit --loglevel=error && echo "Pronto! Veja o LEIA-ME.md para conectar ao Claude."\n');
+  // Modo HTTP (vários colaboradores). As variáveis de banco e HTTPS são definidas antes, no ambiente ou no serviço.
+  writeFileSync(join(out, "iniciar-http.bat"), "@echo off\r\ncd /d \"%~dp0\"\r\nnode servidor.js --http\r\npause\r\n");
+  writeFileSync(join(out, "iniciar-http.sh"), '#!/usr/bin/env sh\ncd "$(dirname "$0")" || exit 1\nexec node servidor.js --http\n');
+
+  // Chaves de acesso do modo HTTP: só nome e hash.
+  const keys = loadKeys(ws).map((k) => ({ nome: k.nome, hash: k.hash }));
+  writeFileSync(join(dados, "chaves.json"), JSON.stringify(keys, null, 2) + "\n");
 
   // Dados aprovados
   const tools = TOOLS.filter((t) => approved(`ferramenta:${t.id}`)).map((t) => t.id);
   writeFileSync(
     join(dados, "config.json"),
-    JSON.stringify({ empresa: company.name, servidor: `mcp-${company.slug}`, versao: `1.0.${SERVER_REVISION}`, ferramentas: tools, auditoria: true }, null, 2) + "\n",
+    JSON.stringify(
+      {
+        empresa: company.name,
+        servidor: `mcp-${company.slug}`,
+        versao: `1.0.${SERVER_REVISION}`,
+        ferramentas: tools,
+        auditoria: true,
+        // Padrão seguro: só neste computador. Para a rede, veja o LEIA-ME (HTTPS obrigatório).
+        http: { host: "127.0.0.1", porta: 3333, limitePorMinuto: 60 },
+      },
+      null,
+      2,
+    ) + "\n",
   );
   const snap = ws.path("aprovado/empresa.md");
   writeFileSync(join(dados, "empresa.md"), approved("contexto:empresa") && existsSync(snap) ? readFileSync(snap, "utf8") : "");
@@ -141,7 +161,59 @@ export function writeServer(ws: Workspace): void {
     }
   }
 
-  writeFileSync(join(out, "LEIA-ME.md"), readme(company.name, company.slug, out, tools, served, queries));
+  writeFileSync(join(out, "LEIA-ME.md"), readme(company.name, company.slug, out, tools, served, queries) + readmeHttp(keys.map((k) => k.nome), queries));
+}
+
+function readmeHttp(keys: string[], queries: ServerQuery[]): string {
+  const aliases = [...new Set(queries.map((q) => q.apelido))];
+  return `
+## Modo HTTP: vários colaboradores ao mesmo tempo
+
+O modo acima (Claude Desktop) atende **uma pessoa, no próprio computador**. Para o agente atender vários
+colaboradores (Teams, intranet, um assistente central), o servidor roda no modo HTTP, num computador ou servidor
+da empresa que fica ligado.
+
+### 1. Crie uma chave de acesso para cada pessoa ou aplicação
+
+No MCP-Builder: **Revisar e aprovar → Acesso pela rede → Criar chave**. A chave aparece **uma única vez**:
+copie e entregue a quem vai usar. O servidor guarda só um "resumo" (hash) dela, que não serve para acessar.
+
+Chaves atuais: ${keys.length ? keys.join(", ") : "**nenhuma** (sem chave, o modo HTTP não inicia)"}
+
+### 2. Inicie
+
+- **Windows:** dois cliques em \`iniciar-http.bat\`
+- **Linux:** \`./iniciar-http.sh\`
+
+Por padrão, ele atende **só neste computador**, em \`http://127.0.0.1:3333/mcp\`.${aliases.length ? ` Antes de iniciar, defina as variáveis dos bancos (${aliases.map((a) => `\`MCP_DB_${a}_USUARIO\`/\`_SENHA\``).join(", ")}) no ambiente do computador ou do serviço.` : ""}
+
+Os clientes enviam a chave no cabeçalho \`Authorization: Bearer <chave>\`. Sem chave válida, a resposta é 401.
+
+### 3. Para abrir na rede (com cuidado)
+
+| Variável | Para quê |
+|---|---|
+| \`MCP_HTTP_HOST=0.0.0.0\` | Aceitar conexões de outros computadores |
+| \`MCP_HTTP_PORTA=3333\` | Porta |
+| \`MCP_HTTPS_CERT\` e \`MCP_HTTPS_CHAVE\` | Caminho do certificado e da chave privada (PEM): **HTTPS obrigatório na rede** |
+| \`MCP_HTTP_SEM_TLS=1\` | Só se houver um proxy HTTPS na frente (IIS, nginx) fazendo a criptografia |
+| \`MCP_HTTP_NOMES=mcp.empresa.local\` | Nomes pelos quais o servidor é chamado (proteção contra DNS rebinding) |
+| \`MCP_HTTP_LIMITE=60\` | Requisições por minuto por chave |
+
+Sem HTTPS (e sem declarar o proxy), o servidor **se recusa a abrir na rede**: a chave trafegaria sem criptografia.
+
+Peça ao TI para liberar a porta **só** para os computadores que precisam (firewall) e para rodar o servidor como
+serviço (ex.: NSSM no Windows, systemd no Linux), para ele voltar sozinho depois de um reinício.
+
+### Auditoria por pessoa
+
+No modo HTTP, cada linha de \`logs/auditoria-AAAA-MM.jsonl\` registra **quem** chamou (o nome da chave).
+Para tirar o acesso de alguém, revogue a chave no MCP-Builder e reinicie o servidor.
+
+### Verificar se está no ar
+
+\`http://127.0.0.1:3333/saude\` responde \`{"ok":true}\` (não exige chave e não expõe nenhuma informação).
+`;
 }
 
 function readme(name: string, slug: string, dir: string, tools: string[], skills: string[], queries: ServerQuery[]): string {

@@ -50,7 +50,7 @@ O que você quer fazer?
   2. Entrevista sobre o negócio
   3. Mapear a tecnologia (computador, rede ou bancos)
   4. Montar o agente (skills e consultas aos sistemas)
-  5. Revisar e aprovar (servidor MCP)
+  5. Revisar e entregar (aprovar; acesso pela rede)
   6. Ver e responder pendências
   7. Abrir o relatório no navegador
   8. Corrigir respostas da entrevista
@@ -87,3 +87,4 @@ Tudo fica **somente neste computador**, na pasta `workspaces/<nome-da-empresa>/`
 8. [Skills](09-skills.md): o que o agente sabe fazer, e de onde isso vem
 9. [Servidor MCP](10-servidor-mcp.md): revisar, aprovar e conectar o agente ao Claude
 10. [Consultas aos sistemas](11-consultas.md): o agente responder com dados (status de pedido, estoque...)
+11. [Acesso pela rede](12-acesso-pela-rede.md): o agente atender vários colaboradores

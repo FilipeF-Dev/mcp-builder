@@ -76,6 +76,10 @@ O servidor fica em `workspaces/<empresa>/saida/servidor-mcp/`. O arquivo **`LEIA
 
 Outros assistentes compatíveis com MCP usam o mesmo comando (`node servidor.js`).
 
+## 4b. Para vários colaboradores: modo HTTP
+
+O passo 4 conecta o agente para **uma pessoa**, no Claude Desktop. Para atender vários colaboradores ao mesmo tempo (Teams, intranet), o mesmo servidor roda no **modo HTTP**, com uma chave de acesso por pessoa ou aplicação. Veja [Acesso pela rede](12-acesso-pela-rede.md).
+
 ## 5. Quando a empresa muda
 
 ```mermaid
