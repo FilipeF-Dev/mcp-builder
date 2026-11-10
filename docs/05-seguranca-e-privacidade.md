@@ -76,6 +76,9 @@ Inclua o uso da ferramenta no registro de atividades de tratamento da empresa, s
 
 ## O servidor MCP
 
+As **consultas aos sistemas** têm várias camadas de proteção: o agente não escreve SQL, as consultas são validadas e aprovadas, os parâmetros vão separados do SQL, a transação é somente leitura e o usuário de banco do agente só lê as tabelas necessárias. Veja [Consultas aos sistemas](11-consultas.md#as-proteções-camada-por-camada).
+
+
 O servidor entregue na etapa 5 aplica as regras também em código: só existe para o agente o que o TI aprovou; CPF, CNPJ, números de cartão e senhas são mascarados em toda resposta; e cada consulta fica registrada em `logs/` (com os argumentos já mascarados). Detalhes em [Servidor MCP](10-servidor-mcp.md).
 
 ## O assistente que será construído

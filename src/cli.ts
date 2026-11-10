@@ -15,6 +15,8 @@ import { MIN_LEVEL_FOR_TECH_SCAN } from "./company/levels.js";
 import { readDatabasesAction, scanHostAction, scanNetworkAction, listQuestions, answerQuestions, buildAgentAction, reviewAction } from "./actions.js";
 import { writeReport } from "./report/html.js";
 import { guided, openFile } from "./guided.js";
+import { listQueriesText, queryWizard, removeQuery } from "./queries/wizard.js";
+import { refreshArtifacts } from "./generation.js";
 import { DEFAULT_PORT, type Engine } from "./collectors/database/readers.js";
 
 const program = new Command();
@@ -113,6 +115,34 @@ program
   .description("etapa 4: gera as skills e as regras de segurança do agente (só o que mudou)")
   .action(() => {
     if (!buildAgentAction(ws())) process.exitCode = 1;
+  });
+
+const consultas = program.command("consultas").description("consultas somente leitura que o agente pode fazer aos sistemas");
+consultas
+  .command("listar", { isDefault: true })
+  .description("lista as consultas criadas")
+  .action(() => listQueriesText(ws()));
+consultas
+  .command("nova")
+  .description("cria uma consulta com o assistente (sem escrever SQL) ou com SQL próprio")
+  .action(async () => {
+    const w = ws();
+    if (await queryWizard(w, Prompter.shared())) writeReport(w);
+  });
+consultas
+  .command("remover")
+  .argument("<id>", "identificador da consulta (o nome sem consultar_)")
+  .description("remove uma consulta")
+  .action((id: string) => {
+    const w = ws();
+    if (removeQuery(w, id)) {
+      refreshArtifacts(w);
+      writeReport(w);
+      console.log(ui.green(`✓ Consulta ${id} removida.`));
+    } else {
+      console.log(ui.yellow(`Consulta ${id} não encontrada.`));
+      process.exitCode = 1;
+    }
   });
 
 program

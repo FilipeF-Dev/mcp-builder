@@ -52,7 +52,8 @@ export function computeStages(ws: Workspace): StageInfo[] {
       const ctx = loadContext(ws);
       const missing = planSkills(ctx).reduce((n, p) => n + missingInfo(ctx, p).length, 0);
       s4 = missing ? "em-andamento" : "concluida";
-      p4 = `${built} skill(s) gerada(s)${missing ? `, ${missing} informação(ões) faltando` : ""}`;
+      const nq = ws.loadQueries().queries.length;
+      p4 = `${built} skill(s) gerada(s)${missing ? `, ${missing} informação(ões) faltando` : ""}${nq ? ` · ${nq} consulta(s) aos sistemas` : ""}`;
     }
   }
   // Etapa 5: revisão e servidor

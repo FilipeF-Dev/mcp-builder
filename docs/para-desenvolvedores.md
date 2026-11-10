@@ -64,6 +64,9 @@ src/
 │   ├── context.ts          SkillContext: o que um modelo pode consultar
 │   ├── index.ts            planeja, renderiza SKILL.md e guardrails.md, gera pendências
 │   └── templates/          fixed.ts (LGPD, senhas, humano, conduta) · adaptive.ts (ERP, migração, e-mail...)
+├── queries/
+│   ├── sql.ts              validação somente leitura, :parâmetros, gerador de SELECT (pg/mssql)
+│   └── wizard.ts           assistente de criação, listar, salvar (revisão) e remover
 ├── delivery/
 │   ├── tools.ts            catálogo de ferramentas do servidor (+ revisões)
 │   ├── approvals.ts        itens revisáveis, decisões e cópias aprovadas (aprovado/)
@@ -207,6 +210,7 @@ Edite `src/company/levels.ts`. Use um `id` estável (ele é a chave em `company.
 - [x] Etapa 5: aprovação por versão e servidor MCP com proteções (mascaramento, auditoria, só o aprovado)
 - [x] Coletor de bancos: estrutura de SQL Server e PostgreSQL, sem ler dados; senha só em memória; colunas sensíveis viram guardrails
 - [ ] Bancos Firebird, MySQL e Oracle
-- [ ] Ferramentas de consulta direta a sistemas (somente leitura, allow-list aprovada) e transporte HTTP
+- [x] Consultas aos sistemas: nomeadas, aprovadas por revisão, validadas 2x, parâmetros separados, transação somente leitura, mascaramento
+- [ ] Transporte HTTP (vários colaboradores) e ferramentas de escrita com confirmação humana
 - [x] Coletor de rede: faixas autorizadas (digitar "autorizado"), TCP connect com limite, banners/HTTP, DNS reverso, ARP, diff entre varreduras
 - [ ] Coletor de bancos de dados (estrutura, somente leitura)

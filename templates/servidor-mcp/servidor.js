@@ -230,6 +230,138 @@ if (ativa("preparar_chamado")) {
   );
 }
 
+// ───────────────────────── Consultas aos sistemas ─────────────────────────
+//
+// Cada consulta APROVADA vira uma ferramenta consultar_<id>. O agente nunca escreve SQL.
+// Proteções: validação do SQL (de novo, aqui), parâmetros separados do texto, transação somente
+// leitura (PostgreSQL), tempo máximo, limite de linhas, colunas sensíveis mascaradas.
+// Credenciais: variáveis de ambiente MCP_DB_<APELIDO>_USUARIO e MCP_DB_<APELIDO>_SENHA.
+
+const consultas = JSON.parse(read(join(DADOS, "consultas.json")) || "[]");
+const TEMPO_MAXIMO_MS = 15000;
+
+const PROIBIDAS = new Set(
+  ("insert update delete merge upsert replace drop alter create truncate rename grant revoke deny exec execute call do into copy " +
+    "vacuum analyze reindex cluster lock set reset begin commit rollback savepoint declare open fetch dbcc bulk openrowset " +
+    "opendatasource openquery shutdown kill backup restore waitfor pg_sleep pg_read_file pg_read_binary_file pg_ls_dir lo_import " +
+    "lo_export dblink load_file outfile listen notify refresh security pg_terminate_backend").split(" "),
+);
+const foraDeTextos = (sql, fn) => sql.split(/('(?:[^']|'')*')/).map((p, i) => (i % 2 ? p : fn(p))).join("");
+
+function sqlSeguro(sql) {
+  const texto = sql.trim().replace(/;\s*$/, "");
+  const codigo = foraDeTextos(texto, (p) => p).replace(/'(?:[^']|'')*'/g, "''");
+  if (/--|\/\*/.test(codigo) || codigo.includes(";") || !/^\s*(select|with)\b/i.test(codigo) || /\b(xp|sp)_\w+/i.test(codigo)) return false;
+  return !(codigo.toLowerCase().match(/[a-z_][a-z0-9_]*/g) ?? []).some((w) => PROIBIDAS.has(w));
+}
+
+/** Troca :nome pelo marcador do driver, fora de textos. Devolve o SQL e a ordem dos parâmetros. */
+function prepararSql(sql, motor) {
+  const ordem = [];
+  const pronto = foraDeTextos(sql.trim().replace(/;\s*$/, ""), (p) =>
+    p.replace(/(?<![:\w]):([a-z_][a-z0-9_]*)/gi, (_, nome) => {
+      ordem.push(nome.toLowerCase());
+      return motor === "postgres" ? `$${ordem.length}` : `@${nome.toLowerCase()}`;
+    }),
+  );
+  return { pronto, ordem };
+}
+
+function credenciais(c) {
+  const usuario = process.env[`MCP_DB_${c.apelido}_USUARIO`];
+  const senha = process.env[`MCP_DB_${c.apelido}_SENHA`];
+  if (!usuario || !senha) throw new Error(`credenciais do banco não configuradas (MCP_DB_${c.apelido}_USUARIO / _SENHA). Veja o LEIA-ME.`);
+  return { usuario, senha };
+}
+
+const poolsSqlServer = new Map();
+
+async function executar(c, args) {
+  const { pronto, ordem } = prepararSql(c.sql, c.motor);
+  const valores = ordem.map((n) => args[n] ?? null);
+  const { usuario, senha } = credenciais(c);
+  if (c.motor === "postgres") {
+    const { default: pg } = await import("pg");
+    const cliente = new pg.Client({ host: c.host, port: c.porta, database: c.banco, user: usuario, password: senha, application_name: "MCP (somente leitura)", connectionTimeoutMillis: 10000 });
+    await cliente.connect();
+    try {
+      await cliente.query("BEGIN READ ONLY");
+      await cliente.query(`SET LOCAL statement_timeout = ${TEMPO_MAXIMO_MS}`);
+      const r = await cliente.query(pronto, valores);
+      return r.rows;
+    } finally {
+      await cliente.query("ROLLBACK").catch(() => {});
+      await cliente.end().catch(() => {});
+    }
+  }
+  const { default: mssql } = await import("mssql");
+  let pool = poolsSqlServer.get(c.apelido);
+  if (!pool) {
+    pool = new mssql.ConnectionPool({
+      server: c.host, port: c.porta, database: c.banco, user: usuario, password: senha,
+      connectionTimeout: 10000, requestTimeout: TEMPO_MAXIMO_MS, pool: { max: 2 },
+      options: { encrypt: true, trustServerCertificate: true, readOnlyIntent: true, appName: "MCP (somente leitura)" },
+    });
+    await pool.connect();
+    poolsSqlServer.set(c.apelido, pool);
+  }
+  const req = pool.request();
+  ordem.forEach((n, i) => req.input(n, valores[i]));
+  return (await req.query(pronto)).recordset;
+}
+
+function tabelaMarkdown(linhas, mascarar_colunas) {
+  if (!linhas.length) return "Nenhum resultado.";
+  const colunas = Object.keys(linhas[0]);
+  const celula = (col, v) => {
+    if (mascarar_colunas.includes(col.toLowerCase())) return MASCARA;
+    if (v === null || v === undefined) return "";
+    const s = v instanceof Date ? v.toISOString().slice(0, 19).replace("T", " ") : String(v);
+    return s.replace(/\|/g, "\\|").replace(/\s+/g, " ").slice(0, 200);
+  };
+  return [
+    `| ${colunas.join(" | ")} |`,
+    `| ${colunas.map(() => "---").join(" | ")} |`,
+    ...linhas.map((l) => `| ${colunas.map((col) => celula(col, l[col])).join(" | ")} |`),
+  ].join("\n");
+}
+
+const tipoZod = (p) => {
+  const base = p.type === "numero" ? z.number() : p.type === "data" ? z.string().regex(/^\d{4}-\d{2}-\d{2}/, "use AAAA-MM-DD") : z.string().min(1).max(200);
+  const descrito = base.describe(p.description);
+  return p.required ? descrito : descrito.optional();
+};
+
+for (const c of consultas) {
+  if (!sqlSeguro(c.sql)) {
+    console.error(`[mcp] consulta "${c.id}" ignorada: SQL não passou na validação de somente leitura.`);
+    continue;
+  }
+  server.registerTool(
+    `consultar_${c.id}`,
+    {
+      title: c.titulo,
+      description: `${c.descricao} (consulta somente leitura no sistema da empresa; até ${c.maxLinhas} linhas)`,
+      inputSchema: Object.fromEntries(c.parametros.map((p) => [p.name, tipoZod(p)])),
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    },
+    protegida(`consultar_${c.id}`, async (args) => {
+      const linhas = (await executar(c, args)).slice(0, c.maxLinhas);
+      if (!linhas.length) return "Nenhum resultado para esses valores.";
+      const aviso = linhas.length >= c.maxLinhas ? `\n\n_Mostrando as primeiras ${c.maxLinhas} linhas._` : "";
+      return `${linhas.length} resultado(s):\n\n${tabelaMarkdown(linhas, c.mascarar)}${aviso}`;
+    }),
+  );
+}
+
+if (consultas.length && ativa("listar_skills")) {
+  server.registerTool(
+    "listar_consultas",
+    { title: "Listar consultas", description: "Lista as consultas aos sistemas da empresa que o agente pode usar.", annotations: SO_LEITURA },
+    protegida("listar_consultas", () => consultas.map((c) => `- **consultar_${c.id}**: ${c.descricao}. Parâmetros: ${c.parametros.map((p) => `${p.name} (${p.description})`).join(", ") || "nenhum"}`).join("\n")),
+  );
+}
+
 // Recursos: para clientes que preferem ler documentos em vez de chamar ferramentas.
 server.registerResource("perfil-da-empresa", "empresa://perfil", { title: `Perfil da ${nomeEmpresa}`, mimeType: "text/markdown" }, async (uri) => ({
   contents: [{ uri: uri.href, text: mascarar(empresa) }],

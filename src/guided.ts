@@ -18,6 +18,8 @@ import { expandAll, localSubnets } from "./collectors/network/ranges.js";
 import { DEFAULT_PORT, ENGINE_LABEL, friendlyDbError, type DbTarget, type Engine } from "./collectors/database/readers.js";
 import { reviewItems } from "./delivery/approvals.js";
 import { SKILLS_DIR } from "./skills/index.js";
+import { listQueriesText, queryWizard, removeQuery } from "./queries/wizard.js";
+import { refreshArtifacts } from "./generation.js";
 import { writeReport } from "./report/html.js";
 
 const ICON: Record<StageState, string> = {
@@ -179,12 +181,39 @@ async function run(ws: Workspace, action: Action, p: Prompter): Promise<void> {
       }
       break;
     }
-    case "agente":
+    case "agente": {
+      const nQueries = ws.loadQueries().queries.length;
       console.log(ui.bold("\nMontar o agente"));
-      console.log("Os modelos de skill vão escrever o que o agente sabe fazer e as regras que ele nunca pode quebrar.");
-      console.log(ui.dim("Nada é enviado para a internet. O que faltar vira pendência para alguém responder."));
-      buildAgentAction(ws);
+      console.log(`  ${ui.cyan("1")}. Gerar ou atualizar as skills e as regras de segurança`);
+      console.log(`  ${ui.cyan("2")}. Criar uma consulta aos sistemas ${ui.dim("(ex.: status de um pedido)")}`);
+      console.log(`  ${ui.cyan("3")}. Ver as consultas criadas ${ui.dim(`(${nQueries})`)}`);
+      console.log(`  ${ui.cyan("4")}. Remover uma consulta`);
+      const opt = (await p.ask("Qual? (Enter = 1) > "))?.trim() || "1";
+      if (opt === "1") {
+        console.log("Os modelos de skill vão escrever o que o agente sabe fazer e as regras que ele nunca pode quebrar.");
+        console.log(ui.dim("Nada é enviado para a internet. O que faltar vira pendência para alguém responder."));
+        buildAgentAction(ws);
+      } else if (opt === "2") {
+        if (await queryWizard(ws, p)) writeReport(ws);
+      } else if (opt === "3") {
+        listQueriesText(ws);
+      } else if (opt === "4") {
+        const qs = ws.loadQueries().queries;
+        if (!qs.length) {
+          console.log(ui.dim("Nenhuma consulta para remover."));
+          break;
+        }
+        qs.forEach((q, i) => console.log(`  ${ui.cyan(String(i + 1))}. ${q.title} ${ui.dim(`(consultar_${q.id})`)}`));
+        const q = qs[Number((await p.ask("Qual remover? (Enter = nenhuma) > "))?.trim()) - 1];
+        if (q && (await p.confirm(`Remover "${q.title}"? Ela sai do agente na próxima atualização do servidor.`, false))) {
+          removeQuery(ws, q.id);
+          refreshArtifacts(ws);
+          writeReport(ws);
+          console.log(ui.green("✓ Removida."));
+        }
+      }
       break;
+    }
     case "aprovar":
       console.log(ui.bold("\nRevisar e aprovar"));
       console.log("Cada skill, o perfil da empresa e cada ferramenta do servidor passam por você. O agente só usa o que for aprovado.");
@@ -360,7 +389,7 @@ export async function guided(): Promise<void> {
     console.log(`  ${ui.cyan("1")}. ${ui.bold("Continuar")}: ${rec.label}  ${ui.green("← recomendado")}`);
     console.log(`  ${ui.cyan("2")}. Entrevista sobre o negócio`);
     console.log(`  ${ui.cyan("3")}. Mapear a tecnologia (computador, rede ou bancos)`);
-    console.log(`  ${ui.cyan("4")}. Montar o agente (gerar skills)`);
+    console.log(`  ${ui.cyan("4")}. Montar o agente (skills e consultas aos sistemas)`);
     console.log(`  ${ui.cyan("5")}. Revisar e aprovar (servidor MCP)`);
     console.log(`  ${ui.cyan("6")}. Ver e responder pendências`);
     console.log(`  ${ui.cyan("7")}. Abrir o relatório no navegador`);

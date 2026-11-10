@@ -85,7 +85,8 @@ export function currentGenerators(ws: Workspace): Generator[] {
       description: "Servidor MCP com o conteúdo aprovado",
       // Muda quando uma aprovação muda, quando as regras mudam ou quando o nome da empresa muda.
       dependsOn: ["aprovacao:", "empresa:nome", ...guardrails.dependsOn],
-      revision: `servidor@${SERVER_REVISION};${guardrails.revision}`,
+      // Inclui as consultas existentes: apagar ou trocar uma consulta também refaz o servidor.
+      revision: `servidor@${SERVER_REVISION};${guardrails.revision};consultas:${ws.loadQueries().queries.map((q) => `${q.id}@${q.revision}`).sort().join(",")}`,
       generate: writeServer,
     });
   }

@@ -216,6 +216,19 @@ export function renderReport(ws: Workspace): string {
       <p class="muted small">Regras de segurança consolidadas: <code>${GUARDRAILS_PATH}</code>. Informações faltando aparecem nas pendências.</p>`;
   }
 
+  // ── Consultas aos sistemas ──
+  const queries = ws.loadQueries().queries;
+  const reviewById = new Map(reviewItems(ws).map((i) => [i.id, i]));
+  const queriesHtml = queries.length
+    ? `<table><tr><th>Consulta</th><th>Quando o agente usa</th><th>Parâmetros</th><th>Revisão</th></tr>${queries
+        .map((q) => {
+          const r = reviewById.get(`consulta:${q.id}`);
+          const cls = r?.status === "aprovado" ? "alta" : r?.status === "recusado" ? "warn" : "media";
+          return `<tr><td><b>${esc(q.title)}</b><div class="muted small"><code>consultar_${esc(q.id)}</code> · rev. ${q.revision} · até ${q.maxRows} linhas</div></td><td class="small">${esc(q.description)}</td><td class="small">${q.params.map((p) => `${esc(p.name)} (${esc(p.type)})`).join("<br>") || "—"}</td><td>${r ? `<span class="tag ${cls}">${STATUS_LABEL[r.status]}</span>` : ""}</td></tr>`;
+        })
+        .join("")}</table>`
+    : `<p class="muted">Nenhuma consulta criada. No menu: Montar o agente → Criar uma consulta aos sistemas.</p>`;
+
   // ── Servidor MCP ──
   const items = reviewItems(ws);
   const rs = reviewSummary(items);
@@ -292,6 +305,10 @@ ${databasesHtml}
 <h2>O agente: skills e regras</h2>
 <p class="muted">O que o agente sabe fazer, e por que cada habilidade existe nesta empresa. Cada skill só é refeita quando as informações das quais depende mudam.</p>
 ${skillsHtml}
+
+<h3>Consultas aos sistemas</h3>
+<p class="muted small">Perguntas fixas, somente leitura, que o agente pode fazer aos bancos. O agente nunca escreve SQL: só escolhe a consulta e informa o valor.</p>
+${queriesHtml}
 
 <h2>Servidor MCP</h2>
 <p class="muted">O que conecta o agente à empresa. Só o que o TI aprovou fica disponível, e tudo é somente leitura.</p>

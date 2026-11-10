@@ -30,6 +30,7 @@ No menu, escolha **5. Revisar e aprovar**. Cada item aparece um por vez:
 | **Perfil da empresa** | O resumo da entrevista que o agente usa como contexto |
 | **Cada skill** | O que o agente sabe fazer ([Skills](09-skills.md)) |
 | **Cada ferramenta** | O que o agente pode **acionar** no servidor (veja abaixo) |
+| **Cada consulta aos sistemas** | Uma pergunta fixa a um banco, como o status de um pedido ([Consultas](11-consultas.md)) |
 
 As **regras de segurança** não passam por aprovação: elas **sempre** vão para o agente. Uma regra nunca é opcional.
 
@@ -97,4 +98,4 @@ Sim. Nesses pontos o agente vai dizer que não sabe e encaminhar para uma pessoa
 Quando a skill for refeita, ela volta para revisão. Para rever na hora, peça a alguém técnico para apagar a linha do item em `aprovacoes.json`. Ele volta como "aguardando revisão".
 
 **O servidor acessa o ERP ou os bancos de dados?**
-Ainda não. Hoje ele entrega o **conhecimento aprovado** (skills, perfil e regras). Consultas diretas aos sistemas, sempre somente leitura e com aprovação, estão no roteiro do projeto.
+Só pelas **consultas** criadas e aprovadas pelo TI, sempre somente leitura, com um usuário de banco próprio do agente. Veja [Consultas aos sistemas](11-consultas.md).

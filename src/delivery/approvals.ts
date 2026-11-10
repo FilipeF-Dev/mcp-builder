@@ -6,7 +6,7 @@
  * só serve essas cópias: se a skill for refeita depois, o agente continua usando a
  * versão aprovada até alguém revisar a nova.
  */
-import { copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import type { Workspace } from "../core/workspace.js";
 import { nowIso } from "../core/workspace.js";
@@ -17,7 +17,7 @@ export type ReviewStatus = "pendente" | "aprovado" | "recusado" | "mudou";
 
 export interface ReviewItem {
   id: string;
-  kind: "skill" | "contexto" | "ferramenta";
+  kind: "skill" | "contexto" | "ferramenta" | "consulta";
   title: string;
   /** Por que existe / o que faz. */
   detail: string;
@@ -29,6 +29,10 @@ export interface ReviewItem {
   approvedVersion?: number;
   missing: number;
   status: ReviewStatus;
+  /** Para consultas: o conteúdo a guardar como cópia aprovada (não há arquivo próprio). */
+  snapshotJson?: string;
+  /** Texto para a pessoa revisar (opção "v"), quando não há arquivo. */
+  preview?: string;
 }
 
 export const STATUS_LABEL: Record<ReviewStatus, string> = {
@@ -82,6 +86,24 @@ export function reviewItems(ws: Workspace): ReviewItem[] {
     });
   }
 
+  const dbs = ws.loadInventory().databases;
+  for (const q of ws.loadQueries().queries) {
+    const id = `consulta:${q.id}`;
+    const db = dbs.find((d) => d.id === q.databaseId);
+    items.push({
+      id,
+      kind: "consulta",
+      title: q.title,
+      detail: `Consulta somente leitura no banco ${db?.database ?? "?"} (${db?.host ?? "?"}). Ferramenta: consultar_${q.id}. Até ${q.maxRows} linhas.`,
+      snapshotPath: `aprovado/consultas/${q.id}.json`,
+      snapshotJson: JSON.stringify(q, null, 2),
+      preview: [`Quando usar: ${q.description}`, `Parâmetros: ${q.params.map((p) => `${p.name} (${p.type}: ${p.description})`).join("; ") || "nenhum"}`, "SQL:", q.sql].join("\n"),
+      version: q.revision,
+      missing: 0,
+      ...status(id, q.revision),
+    });
+  }
+
   for (const t of TOOLS) {
     const id = `ferramenta:${t.id}`;
     items.push({ id, kind: "ferramenta", title: t.title, detail: `${t.what}${t.readOnly ? " (somente leitura)" : ""}`, version: t.revision, missing: 0, ...status(id, t.revision) });
@@ -95,11 +117,12 @@ export function decide(ws: Workspace, item: ReviewItem, decision: "aprovado" | "
   approvals.items[item.id] = { decision, version: item.version, at: nowIso() };
   ws.saveApprovals(approvals);
 
-  if (!item.snapshotPath || !item.sourcePath) return;
+  if (!item.snapshotPath || (!item.sourcePath && !item.snapshotJson)) return;
   const snap = ws.path(item.snapshotPath);
   if (decision === "aprovado") {
     mkdirSync(dirname(snap), { recursive: true });
-    copyFileSync(ws.path(item.sourcePath), snap);
+    if (item.snapshotJson) writeFileSync(snap, item.snapshotJson + "\n", "utf8");
+    else copyFileSync(ws.path(item.sourcePath!), snap);
   } else if (existsSync(snap)) {
     rmSync(snap);
   }

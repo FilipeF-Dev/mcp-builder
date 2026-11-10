@@ -15,7 +15,7 @@ export interface ToolInfo {
 }
 
 /** Aumente ao mudar o código do servidor: os servidores entregues são refeitos (sem exigir nova aprovação). */
-export const SERVER_REVISION = 2;
+export const SERVER_REVISION = 4;
 
 export const TOOLS: ToolInfo[] = [
   { id: "buscar_conhecimento", title: "Buscar no conhecimento", what: "Procura nas skills aprovadas e no perfil da empresa os trechos que respondem a uma dúvida.", readOnly: true, revision: 1 },

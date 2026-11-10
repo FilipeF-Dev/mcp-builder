@@ -49,6 +49,9 @@ Não. Nos bancos, ela lê só a estrutura: nomes de tabelas e colunas. O ideal �
 **O meu banco é Firebird (ou MySQL, Oracle).**
 Ainda não é suportado para leitura de estrutura. A varredura de rede e a análise de computador reconhecem esses bancos, e eles aparecem nas pendências.
 
+**O agente pode alterar algo no sistema (um pedido, um cadastro)?**
+Não. As consultas são somente leitura, com várias camadas de proteção. O ideal é que o próprio usuário de banco do agente só tenha permissão de leitura nas tabelas necessárias. Veja [Consultas aos sistemas](11-consultas.md).
+
 **O antivírus bloqueou a ferramenta.**
 A ferramenta usa comandos padrão do Windows (PowerShell) para ler a configuração, e alguns antivírus estranham isso. Peça ao TI para liberar a pasta do MCP-Builder. Por isso, também, é importante avisar o TI antes (veja [Segurança](05-seguranca-e-privacidade.md)).
 

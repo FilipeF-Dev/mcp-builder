@@ -190,7 +190,7 @@ export async function reviewAction(ws: Workspace): Promise<boolean> {
     let n = 0;
     for (const item of todo) {
       n++;
-      const kind = { skill: "Skill", contexto: "Contexto", ferramenta: "Ferramenta" }[item.kind];
+      const kind = { skill: "Skill", contexto: "Contexto", ferramenta: "Ferramenta", consulta: "Consulta" }[item.kind];
       const ver = item.kind === "ferramenta" ? "" : ` v${item.version}${item.approvedVersion ? ` (no ar: v${item.approvedVersion})` : ""}`;
       console.log(`\n${ui.dim(`[${n}/${todo.length}]`)} ${ui.bold(`${kind}: ${item.title}`)}${ui.dim(ver)}`);
       console.log(`  ${item.detail}`);
@@ -206,9 +206,9 @@ export async function reviewAction(ws: Workspace): Promise<boolean> {
           break;
         }
         const t = raw.trim().toLowerCase();
-        if (t === "v" && item.sourcePath) {
+        if (t === "v" && (item.sourcePath || item.preview)) {
           console.log(ui.dim("─".repeat(60)));
-          console.log(readFileSync(ws.path(item.sourcePath), "utf8").trim());
+          console.log(item.preview ?? readFileSync(ws.path(item.sourcePath!), "utf8").trim());
           console.log(ui.dim("─".repeat(60)));
           continue;
         }

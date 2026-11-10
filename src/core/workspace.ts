@@ -3,6 +3,8 @@ import { dirname, join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { ZodType } from "zod";
 import {
+  QueriesFileSchema,
+  type QueriesFile,
   DbStructureSchema,
   type DbStructure,
   ApprovalsSchema,
@@ -185,6 +187,15 @@ export class Workspace {
   }
   saveApprovals(a: Approvals): void {
     writeJson(this.path("aprovacoes.json"), a);
+  }
+
+  // consultas aos sistemas (criadas pelo TI)
+  loadQueries(): QueriesFile {
+    const p = this.path("consultas.json");
+    return existsSync(p) ? readJson(p, QueriesFileSchema) : { schemaVersion: 1, queries: [] };
+  }
+  saveQueries(q: QueriesFile): void {
+    writeJson(this.path("consultas.json"), q);
   }
 
   // estrutura completa de bancos (arquivos grandes, fora do inventário)

@@ -337,3 +337,41 @@ export const ApprovalsSchema = z.object({
   items: z.record(z.string(), ApprovalSchema),
 });
 export type Approvals = z.infer<typeof ApprovalsSchema>;
+
+// ───────────────────────── Consultas aos sistemas ─────────────────────────
+
+/**
+ * Uma consulta NOMEADA e somente leitura que o agente pode executar.
+ * O agente nunca escreve SQL: só escolhe uma consulta aprovada e passa os parâmetros.
+ * No SQL, parâmetros aparecem como :nome e são enviados SEPARADOS do texto (nunca colados).
+ */
+export const QueryParamSchema = z.object({
+  name: z.string().regex(/^[a-z_][a-z0-9_]*$/),
+  type: z.enum(["texto", "numero", "data"]),
+  description: z.string(),
+  required: z.boolean(),
+});
+export type QueryParam = z.infer<typeof QueryParamSchema>;
+
+export const QuerySchema = z.object({
+  /** Vira o nome da ferramenta: consultar_<id>. */
+  id: z.string().regex(/^[a-z0-9_]+$/),
+  title: z.string(),
+  /** Quando o agente deve usar (linguagem simples). */
+  description: z.string(),
+  /** Banco do inventário (Database.id). */
+  databaseId: z.string(),
+  sql: z.string(),
+  params: z.array(QueryParamSchema),
+  maxRows: z.number().int().min(1).max(200),
+  /** Como foi criada: pelo assistente ou SQL escrito à mão. */
+  origin: z.enum(["assistente", "manual"]),
+  /** Aumenta a cada alteração: a aprovação vale para uma revisão. */
+  revision: z.number().int(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type Query = z.infer<typeof QuerySchema>;
+
+export const QueriesFileSchema = z.object({ schemaVersion: z.literal(1), queries: z.array(QuerySchema) });
+export type QueriesFile = z.infer<typeof QueriesFileSchema>;
