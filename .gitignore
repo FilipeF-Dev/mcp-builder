@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# Workspaces contêm dados reais da empresa — nunca versionar
+workspaces/

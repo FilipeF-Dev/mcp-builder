@@ -1,0 +1,107 @@
+# Como funciona
+
+Este documento explica **a lógica do processo inteiro**: o que acontece em cada etapa, por que ela vem naquela ordem e o que ela produz.
+
+## A ideia em uma frase
+
+Um assistente de IA só é útil se **conhece a empresa**. O MCP-Builder constrói esse conhecimento **do básico ao complexo**, confirma com pessoas tudo o que não tem certeza e entrega ao TI uma estrutura pronta para ligar o assistente.
+
+## Os quatro princípios
+
+| Princípio | Na prática |
+|---|---|
+| **Do básico ao complexo** | Primeiro o ramo de atuação, depois como a empresa funciona, e só então a tecnologia. A ferramenta **bloqueia** a análise técnica até o básico do negócio estar respondido. |
+| **Perguntar em vez de supor** | O que a ferramenta não consegue entender sozinha vira uma **pendência** para uma pessoa. Uma suposição errada vira um assistente dando informação errada. |
+| **Só ler, nunca alterar** | A análise dos computadores apenas consulta informações. Senhas encontradas são ocultadas antes de gravar. |
+| **Uma pessoa aprova** | Nada que o assistente fará chega à operação sem aprovação humana (etapa 5). |
+
+## O fluxo
+
+```mermaid
+flowchart TD
+    A["Etapa 1: Conhecer o negócio<br/><i>entrevista em 6 níveis</i>"] -->|"níveis 1 e 2 concluídos"| B["Etapa 2: Mapear a tecnologia<br/><i>análise dos computadores</i>"]
+    A --> C
+    B --> C["Etapa 3: Resolver pendências<br/><i>o que não deu para entender</i>"]
+    C --> D["Etapa 4: Montar o agente<br/><i>contexto, skills, guardrails</i>"]
+    D --> E["Etapa 5: Revisar e entregar<br/><i>TI aprova; servidor MCP pronto</i>"]
+    C -. "respostas melhoram a compreensão" .-> B
+```
+
+## Etapa por etapa
+
+### Etapa 1: Conhecer o negócio
+
+**O que acontece:** uma entrevista em 6 níveis, do mais simples ao mais específico:
+
+1. Identidade e ramo de atuação
+2. Como a empresa atua
+3. Estrutura e pessoas
+4. Processos-chave e dúvidas do dia a dia
+5. Sistemas e dados (do ponto de vista de quem usa)
+6. O agente: objetivos e limites
+
+**Por que vem primeiro:** um mesmo dado técnico significa coisas diferentes em empresas diferentes. Um servidor de banco de dados numa rede de restaurantes provavelmente guarda pedidos e estoque; numa clínica, prontuários. Sem o contexto do negócio, a análise técnica só produz uma lista de nomes.
+
+**Por que nesta ordem dentro da entrevista:** cada nível usa o anterior. Não dá para perguntar sobre "processos críticos" antes de saber como a empresa ganha dinheiro, nem definir "o que o agente pode fazer" antes de conhecer os processos.
+
+**O que produz:** `context/01-empresa.md`, o perfil da empresa que o assistente vai ler.
+
+Detalhes: [A entrevista](03-a-entrevista.md).
+
+### Etapa 2: Mapear a tecnologia
+
+**O que acontece:** a ferramenta examina o computador onde está rodando e lista programas, serviços, portas de rede, tarefas automáticas e conexões com bancos de dados. Depois compara tudo com um **catálogo de sistemas conhecidos** (ERPs, bancos de dados, sistemas de backup...).
+
+**Por que depois da entrevista:** a ferramenta **cruza** o que encontrou com o que as pessoas disseram. Exemplos reais:
+
+- A entrevista disse que o sistema A está sendo substituído pelo B, e a análise encontrou os dois → a ferramenta pergunta qual é o papel de cada um hoje.
+- A análise encontrou um sistema que **ninguém citou** na entrevista → a ferramenta pergunta se ele ainda é usado, e por quem.
+- A análise encontrou um indício fraco de um sistema, mas a entrevista o citou → a confiança aumenta e a pergunta fica mais direta.
+
+**O que produz:** `inventory.json` (inventário técnico) e `context/10-hosts.md` (resumo legível).
+
+Detalhes: [A análise técnica](04-analise-tecnica.md).
+
+### Etapa 3: Resolver pendências
+
+**O que acontece:** tudo o que ficou sem resposta (os `?` da entrevista e as dúvidas da análise) aparece numa lista, cada item com **por que foi perguntado** e **quem provavelmente sabe**.
+
+**Por que existe:** nenhuma ferramenta descobre sozinha para que serve uma tarefa agendada criada há cinco anos por um técnico que já saiu. Uma pessoa da empresa responde isso em dez segundos.
+
+**O que produz:** `questions.json`, com as respostas incorporadas ao conhecimento da empresa.
+
+### Etapa 4: Montar o agente *(em breve)*
+
+Com o negócio entendido, a tecnologia mapeada e as dúvidas resolvidas, uma IA escreve:
+
+- **Contexto:** o que o assistente precisa saber sobre a empresa
+- **Skills (habilidades):** procedimentos passo a passo, como "como abrir um chamado" ou "como consultar um pedido"
+- **Guardrails (regras de segurança):** o que o assistente nunca pode fazer, quais dados nunca pode mostrar, quando precisa pedir aprovação
+
+Antes de qualquer envio para a IA, senhas e dados pessoais já foram removidos.
+
+### Etapa 5: Revisar e entregar *(em breve)*
+
+Um relatório para o TI aprovar item por item, e o **servidor MCP**: o programa que conecta o assistente de IA aos sistemas da empresa, com as regras de segurança aplicadas.
+
+## E quando a empresa muda?
+
+Basta rodar a análise de novo. A ferramenta compara com a anterior, mostra **só o que mudou**, pergunta sobre as mudanças importantes e refaz **só os arquivos afetados**. Veja [Atualização contínua](08-atualizacao-continua.md).
+
+## O que fica na pasta da empresa
+
+```
+workspaces/restaurante-exemplo/
+├── relatorio.html     ← abra no navegador: o resumo de tudo, para qualquer pessoa
+├── company.json       respostas da entrevista
+├── inventory.json     o que a análise técnica encontrou
+├── questions.json     pendências e respostas
+├── changes.json       diário de mudanças entre análises
+├── generated.json     o que foi gerado e de quais informações depende
+├── historico/         cópia de cada análise anterior
+└── context/
+    ├── 01-empresa.md  perfil da empresa (para o assistente)
+    └── 10-hosts.md    computadores analisados (para o assistente)
+```
+
+Os arquivos `.json` são para a ferramenta. **Para acompanhar, use o `relatorio.html`.**
