@@ -15,6 +15,7 @@ import { allFacts, fingerprint } from "./core/facts.js";
 import { writeCompanyContext } from "./company/context.js";
 import { writeHostsContext } from "./collectors/host/context.js";
 import { writeNetworkContext } from "./collectors/network/context.js";
+import { writeDatabasesContext } from "./collectors/database/context.js";
 import { SERVER_DIR, serverEnabled, writeServer } from "./delivery/server.js";
 import { SERVER_REVISION } from "./delivery/tools.js";
 import { GUARDRAILS_PATH, SKILLS_DIR, loadContext, planSkills, skillsEnabled, writeGuardrails, writeSkill } from "./skills/index.js";
@@ -49,6 +50,12 @@ const STATIC_GENERATORS: Generator[] = [
     description: "Equipamentos e serviços encontrados na rede",
     dependsOn: ["rede:"],
     generate: (ws) => void writeNetworkContext(ws),
+  },
+  {
+    path: "context/12-bancos.md",
+    description: "Estrutura e conteúdo provável dos bancos de dados",
+    dependsOn: ["banco:"],
+    generate: (ws) => void writeDatabasesContext(ws),
   },
 ];
 

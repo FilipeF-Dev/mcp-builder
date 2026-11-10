@@ -8,10 +8,9 @@ No menu, **3. Mapear a tecnologia** oferece duas análises que se completam:
 |---|---|---|
 | **Este computador** | Tudo o que está **instalado** na máquina: programas, serviços, tarefas, conexões | Em cada servidor principal e em um computador típico de cada área |
 | **A rede** | O que cada equipamento da rede **oferece**: banco de dados, e-mail, sites internos, impressoras... | Uma vez no começo, para ter o mapa geral, e sempre que algo mudar |
+| **Bancos de dados** | A **estrutura** de cada banco (tabelas e colunas), nunca os dados | Nos bancos que a rede encontrou, com um usuário de leitura criado pelo TI |
 
-**Ordem sugerida:** primeiro a rede, para descobrir onde estão os servidores; depois a análise de computador nos servidores que importam.
-
-> **Próxima versão:** leitura da estrutura dos bancos de dados encontrados.
+**Ordem sugerida:** primeiro a rede, para descobrir onde estão os servidores e bancos; depois os bancos; depois a análise de computador nos servidores que importam.
 
 ## Varredura de rede
 
@@ -54,7 +53,7 @@ A velocidade é limitada (no máximo 64 conexões ao mesmo tempo), para não pes
 
 ### O que vira pendência
 
-- **Bancos de dados encontrados:** "qual sistema usa esse banco e quem é o responsável?" É por aí que a leitura de bancos (próxima versão) vai começar.
+- **Bancos de dados encontrados:** "qual sistema usa esse banco e quem é o responsável?" Esses bancos aparecem como sugestão na leitura de bancos.
 - **Sites internos não reconhecidos:** "o endereço http://192.168.1.20:8080 é de qual sistema?"
 - **Protocolos sem criptografia** (FTP, Telnet): "ainda são usados? para quê?"
 - **Mudanças entre varreduras:** um sistema que apareceu ou sumiu.
@@ -64,6 +63,64 @@ A velocidade é limitada (no máximo 64 conexões ao mesmo tempo), para não pes
 - Equipamentos com firewall que bloqueia tudo podem não aparecer (em outras redes, a tabela ARP não ajuda).
 - O **tipo** do equipamento é uma hipótese baseada nas portas abertas, e o relatório deixa isso claro.
 - Só IPv4.
+
+## Leitura de bancos de dados
+
+### O que é lido, e o que não é
+
+| É lido | Nunca é lido |
+|---|---|
+| Nomes de bancos, esquemas, tabelas, views e procedures | Nenhuma linha de nenhuma tabela |
+| Nomes e tipos de colunas, chaves e relacionamentos | Clientes, pedidos, salários, notas... |
+| A **estimativa** de linhas que o próprio banco guarda nas estatísticas | |
+
+As consultas são fixas, apenas no catálogo do banco. No PostgreSQL, a sessão é aberta em modo somente leitura. A senha é pedida na hora (sem aparecer na tela), usada só em memória e **nunca gravada**.
+
+Hoje: **SQL Server** e **PostgreSQL**. Firebird, MySQL e Oracle em próximas versões.
+
+### Peça ao TI um usuário que NÃO consegue ler dados
+
+O ideal é um usuário criado só para isso, que enxerga a estrutura mas **não tem permissão de ler os dados**. Assim, mesmo que a senha vaze, ninguém lê nada com ela.
+
+**PostgreSQL**: basta poder conectar (por padrão, todo usuário pode):
+
+```sql
+CREATE ROLE mcp_leitura LOGIN PASSWORD 'troque-por-uma-senha-forte';
+-- Só se a empresa tiver retirado a permissão padrão de conexão:
+GRANT CONNECT ON DATABASE nome_do_banco TO mcp_leitura;
+```
+
+**SQL Server**: em cada banco a ser lido:
+
+```sql
+-- No servidor, uma vez:
+CREATE LOGIN mcp_leitura WITH PASSWORD = 'troque-por-uma-senha-forte';
+-- Em cada banco:
+USE NomeDoBanco;
+CREATE USER mcp_leitura FOR LOGIN mcp_leitura;
+GRANT VIEW DEFINITION TO mcp_leitura;   -- enxerga a estrutura, não os dados
+```
+
+> O conector de PostgreSQL foi testado com um usuário assim: ele leu toda a estrutura e não conseguiu ler nenhuma linha. O de SQL Server ainda não foi testado com um servidor real.
+
+Depois da leitura, o TI pode desativar o usuário até a próxima atualização.
+
+### O que a ferramenta tira da estrutura
+
+- **Sistema provável:** pelo nome do banco e dos esquemas (ex.: um banco `teknisa_prod`).
+- **Áreas de negócio:** pelos nomes das tabelas (clientes, produtos, estoque, vendas, compras, financeiro, fiscal, RH, cardápio e produção, usuários).
+- **Maiores tabelas:** pela estimativa do próprio banco. Costumam ser o "coração" do sistema.
+- **Dados pessoais e sensíveis** (LGPD), pelos nomes das colunas: CPF, CNPJ, RG, PIS, data de nascimento, salário, senha, cartão, dados bancários, e-mail, telefone, endereço, saúde.
+
+Os dados sensíveis encontrados **viram regras de segurança automaticamente**: a skill de LGPD passa a listar onde eles estão, e as regras do agente proíbem expô-los.
+
+### O que vira pendência
+
+- Banco cujo sistema não foi reconhecido: "o banco X pertence a qual sistema?"
+- Colunas de senha: "elas são guardadas com criptografia ou em texto?"
+- Mudanças entre leituras: tabelas novas, removidas ou alteradas, e principalmente **coluna nova com dado sensível** (importante).
+
+A estrutura completa de cada banco fica em `workspaces/<empresa>/bancos/` (para o TI), e um resumo legível em `context/12-bancos.md`.
 
 ## Análise de computador
 

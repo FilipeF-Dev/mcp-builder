@@ -13,8 +13,9 @@ import { computeStages, STATE_LABEL, type StageState } from "./core/stages.js";
 import { runInterview } from "./company/interview.js";
 import { completedUpTo } from "./company/progress.js";
 import { LEVELS, MIN_LEVEL_FOR_TECH_SCAN } from "./company/levels.js";
-import { scanHostAction, scanNetworkAction, listQuestions, answerQuestions, buildAgentAction, reviewAction } from "./actions.js";
+import { listServerDatabases, readDatabasesAction, scanHostAction, scanNetworkAction, listQuestions, answerQuestions, buildAgentAction, reviewAction } from "./actions.js";
 import { expandAll, localSubnets } from "./collectors/network/ranges.js";
+import { DEFAULT_PORT, ENGINE_LABEL, friendlyDbError, type DbTarget, type Engine } from "./collectors/database/readers.js";
 import { reviewItems } from "./delivery/approvals.js";
 import { SKILLS_DIR } from "./skills/index.js";
 import { writeReport } from "./report/html.js";
@@ -155,9 +156,14 @@ async function run(ws: Workspace, action: Action, p: Prompter): Promise<void> {
       console.log(ui.bold("\nMapear a tecnologia"));
       console.log(`  ${ui.cyan("1")}. ${analyzedHere ? "Atualizar a análise deste computador" : "Analisar este computador"}`);
       console.log(`  ${ui.cyan("2")}. ${scans ? "Varrer a rede de novo (mostra só o que mudou)" : "Varrer a rede da empresa"}`);
+      console.log(`  ${ui.cyan("3")}. Ler a estrutura de um banco de dados`);
       const which = (await p.ask("Qual? (Enter = voltar) > "))?.trim();
       if (which === "2") {
         await networkFlow(ws, p);
+        return;
+      }
+      if (which === "3") {
+        await databaseFlow(ws, p);
         return;
       }
       if (which !== "1") return;
@@ -194,6 +200,91 @@ async function run(ws: Workspace, action: Action, p: Prompter): Promise<void> {
       break;
     }
   }
+}
+
+/** Bancos que a ferramenta já conhece: achados na rede, nesta máquina ou lidos antes. */
+function databaseCandidates(ws: Workspace): Array<{ engine: Engine; host: string; port: number; label: string }> {
+  const inv = ws.loadInventory();
+  const out = new Map<string, { engine: Engine; host: string; port: number; label: string }>();
+  const add = (engine: Engine, host: string, port: number, label: string) => out.set(`${engine}|${host}|${port}`, { engine, host, port, label });
+  for (const d of inv.databases) add(d.engine, d.host, d.port, `${ENGINE_LABEL[d.engine]} em ${d.host}:${d.port} ${ui.dim("(já lido antes)")}`);
+  for (const d of inv.network.devices) {
+    for (const s of d.services) {
+      const engine: Engine | undefined = s.port === 1433 ? "sqlserver" : s.port === 5432 ? "postgres" : undefined;
+      if (engine) add(engine, d.ip, s.port, `${ENGINE_LABEL[engine]} em ${d.hostname ?? d.ip}:${s.port} ${ui.dim("(encontrado na rede)")}`);
+    }
+  }
+  for (const h of inv.hosts) {
+    for (const s of h.systems) {
+      if (s.signatureId === "sqlserver") add("sqlserver", "127.0.0.1", 1433, `SQL Server neste computador (${h.hostname})`);
+      if (s.signatureId === "postgres") add("postgres", "127.0.0.1", 5432, `PostgreSQL neste computador (${h.hostname})`);
+    }
+  }
+  return [...out.values()];
+}
+
+/** Leitura guiada da estrutura de um banco. A senha só existe em memória. */
+async function databaseFlow(ws: Workspace, p: Prompter): Promise<void> {
+  console.log(ui.bold("\nLer a estrutura de um banco de dados"));
+  console.log("A ferramenta lê só a ESTRUTURA: nomes de tabelas, colunas e relacionamentos. Nenhum dado");
+  console.log("(cliente, pedido, salário...) é lido. Com isso ela entende o que cada banco guarda e onde há");
+  console.log("dados pessoais, que viram regras de segurança para o agente.");
+  console.log(ui.dim("\nVocê vai precisar de um usuário do banco com permissão de leitura. O ideal é o TI criar um"));
+  console.log(ui.dim("usuário só para isso (veja docs/04-analise-tecnica.md). A senha não é gravada em lugar nenhum."));
+  console.log(ui.dim("Hoje: SQL Server e PostgreSQL. Outros bancos (Firebird, MySQL, Oracle) em próximas versões."));
+
+  const candidates = databaseCandidates(ws);
+  console.log(ui.bold("\nQual servidor de banco?"));
+  candidates.forEach((c, i) => console.log(`  ${ui.cyan(String(i + 1))}. ${c.label}`));
+  console.log(`  ${ui.cyan("D")}. Digitar o endereço`);
+  let target: { engine: Engine; host: string; port: number } | undefined;
+  for (;;) {
+    const raw = (await p.ask("> "))?.trim();
+    if (!raw) return;
+    if (raw.toLowerCase() === "d") {
+      const eng = (await p.ask(`Tipo: ${ui.cyan("1")}. SQL Server  ${ui.cyan("2")}. PostgreSQL > `))?.trim();
+      const engine: Engine | undefined = eng === "1" ? "sqlserver" : eng === "2" ? "postgres" : undefined;
+      if (!engine) continue;
+      const host = (await p.ask("Endereço do servidor (nome ou IP): "))?.trim();
+      if (!host) return;
+      const portRaw = (await p.ask(`Porta (Enter = ${DEFAULT_PORT[engine]}): `))?.trim();
+      target = { engine, host, port: portRaw ? Number(portRaw) : DEFAULT_PORT[engine] };
+    } else {
+      target = candidates[Number(raw) - 1];
+    }
+    if (target) break;
+  }
+
+  const user = (await p.ask("Usuário do banco: "))?.trim();
+  if (!user) return;
+  const password = (await p.askSecret("Senha (não aparece na tela e não é gravada): ")) ?? "";
+  const full: DbTarget = { ...target, user, password };
+
+  let available: string[];
+  try {
+    process.stdout.write("Conectando... ");
+    available = await listServerDatabases(full);
+    console.log(ui.green("ok"));
+  } catch (e) {
+    console.log(ui.red(`falhou: ${friendlyDbError(e)}`));
+    return;
+  }
+  if (!available.length) {
+    console.log(ui.yellow("Esse usuário não enxerga nenhum banco."));
+    return;
+  }
+  console.log(ui.bold("\nQuais bancos ler?"));
+  available.forEach((n, i) => console.log(`  ${ui.cyan(String(i + 1))}. ${n}`));
+  const pick = (await p.ask(`Números separados por vírgula (Enter = todos${available.length > 20 ? ", até 20" : ""}): `))?.trim();
+  const chosen = pick
+    ? pick
+        .split(/[,\s]+/)
+        .map((x) => available[Number(x) - 1])
+        .filter(Boolean)
+    : available;
+  if (!chosen.length) return;
+  console.log();
+  await readDatabasesAction(ws, { target: full, databases: chosen });
 }
 
 /** Varredura de rede guiada: escolha da faixa, estimativa e autorização digitada por extenso. */
@@ -268,7 +359,7 @@ export async function guided(): Promise<void> {
     console.log(ui.bold("\nO que você quer fazer?"));
     console.log(`  ${ui.cyan("1")}. ${ui.bold("Continuar")}: ${rec.label}  ${ui.green("← recomendado")}`);
     console.log(`  ${ui.cyan("2")}. Entrevista sobre o negócio`);
-    console.log(`  ${ui.cyan("3")}. Mapear a tecnologia (este computador ou a rede)`);
+    console.log(`  ${ui.cyan("3")}. Mapear a tecnologia (computador, rede ou bancos)`);
     console.log(`  ${ui.cyan("4")}. Montar o agente (gerar skills)`);
     console.log(`  ${ui.cyan("5")}. Revisar e aprovar (servidor MCP)`);
     console.log(`  ${ui.cyan("6")}. Ver e responder pendências`);

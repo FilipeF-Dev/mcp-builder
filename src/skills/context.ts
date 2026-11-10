@@ -49,6 +49,15 @@ export class SkillContext {
     return !!v && norm(v).includes(norm(term));
   }
 
+  /** Dados sensíveis encontrados na estrutura dos bancos, por tipo (CPF, salário...) → colunas. */
+  sensitiveData(): Map<string, string[]> {
+    const out = new Map<string, string[]>();
+    for (const d of this.inv.databases ?? []) {
+      for (const s of d.sensitive) out.set(s.kind, [...(out.get(s.kind) ?? []), `${d.database}.${s.column}`]);
+    }
+    return out;
+  }
+
   /** Sistemas encontrados na análise técnica, agrupados (uma entrada por sistema). */
   systems(category?: string): FoundSystem[] {
     const map = new Map<string, FoundSystem>();
@@ -56,6 +65,7 @@ export class SkillContext {
     const sources = [
       ...this.inv.hosts.map((h) => ({ label: h.hostname, systems: h.systems })),
       ...(this.inv.network?.devices ?? []).map((d) => ({ label: d.hostname ?? d.ip, systems: d.systems })),
+      ...(this.inv.databases ?? []).map((d) => ({ label: `banco ${d.database} (${d.host})`, systems: d.systems })),
     ];
     for (const h of sources) {
       for (const s of h.systems) {

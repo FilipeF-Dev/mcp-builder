@@ -9,7 +9,7 @@ import { bullets, lc, or, todo, toneLine } from "./helpers.js";
 export const lgpd: SkillTemplate = {
   id: "lgpd",
   kind: "fixo",
-  revision: 2,
+  revision: 3,
   summary: "Tratamento de dados pessoais conforme a LGPD (Lei 13.709/2018).",
   plan: (ctx) => [
     {
@@ -18,7 +18,7 @@ export const lgpd: SkillTemplate = {
       kind: "fixo",
       area: "Segurança",
       why: "Toda empresa brasileira que trata dados pessoais está sujeita à LGPD.",
-      dependsOn: ["empresa:dados_sensiveis", "empresa:nao_pode", "empresa:regulacoes", "empresa:nome", "skill-info:lgpd-dados-pessoais:"],
+      dependsOn: ["empresa:dados_sensiveis", "empresa:nao_pode", "empresa:regulacoes", "empresa:nome", "skill-info:lgpd-dados-pessoais:", "dados-sensiveis:"],
       needs: [
         {
           key: "encarregado",
@@ -33,7 +33,9 @@ export const lgpd: SkillTemplate = {
           why: "Pedidos de titulares devem ir para o canal oficial, nunca ser atendidos pelo agente.",
         },
       ],
-      build: (info) => ({
+      build: (info) => {
+        const sensitive = ctx.sensitiveData();
+        return {
         description: `Use sempre que uma conversa envolver dados pessoais (nome, CPF, endereço, telefone, salário, saúde, dados de clientes ou colaboradores) na ${ctx.name}, ou quando alguém pedir acesso, correção ou exclusão de dados.`,
         sections: [
           {
@@ -49,6 +51,18 @@ export const lgpd: SkillTemplate = {
             title: "Dados que esta empresa considera sensíveis",
             lines: bullets(ctx.list("dados_sensiveis"), todo("quais dados são sensíveis (nível 6 da entrevista)")),
           },
+          ...(sensitive.size
+            ? [
+                {
+                  title: "Onde há dados pessoais nos sistemas",
+                  lines: [
+                    "A leitura da estrutura dos bancos encontrou estes tipos de dado pessoal ou sensível. Trate qualquer informação desses tipos como protegida:",
+                    "",
+                    ...[...sensitive].map(([kind, cols]) => `- **${kind}:** ${cols.length} coluna(s), por exemplo ${cols.slice(0, 3).join(", ")}`),
+                  ],
+                },
+              ]
+            : []),
           {
             title: "Pedidos de titulares (acesso, correção, exclusão)",
             lines: [
@@ -73,8 +87,10 @@ export const lgpd: SkillTemplate = {
           "Nunca exibir dados pessoais de uma pessoa para outra, mesmo que seja colega ou gestor, sem uma permissão explícita definida pela empresa.",
           ...ctx.list("dados_sensiveis").map((d) => `Nunca exibir ou resumir: ${lc(d)}.`),
           "Nunca atender diretamente pedidos de acesso, correção ou exclusão de dados: encaminhar ao canal oficial.",
+          ...(sensitive.size ? [`Nunca exibir dados dos tipos encontrados nos sistemas da empresa: ${[...sensitive.keys()].join(", ")}.`] : []),
         ],
-      }),
+        };
+      },
     },
   ],
 };

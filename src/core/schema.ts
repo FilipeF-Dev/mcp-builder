@@ -200,12 +200,70 @@ export const NetworkSchema = z.object({
 });
 export type Network = z.infer<typeof NetworkSchema>;
 
+// ───────────────────────── Bancos de dados ─────────────────────────
+
+/** Estrutura completa de um banco (arquivo bancos/<id>.json). Só estrutura: nenhuma linha de dados. */
+export const DbColumnSchema = z.object({ name: z.string(), type: z.string(), nullable: z.boolean() });
+export const DbTableSchema = z.object({
+  schema: z.string(),
+  name: z.string(),
+  kind: z.enum(["tabela", "view"]),
+  /** Estimativa de linhas pelas estatísticas do banco (sem ler as linhas). */
+  approxRows: z.number().optional(),
+  columns: z.array(DbColumnSchema),
+  primaryKey: z.array(z.string()),
+});
+export type DbTable = z.infer<typeof DbTableSchema>;
+export const DbForeignKeySchema = z.object({ from: z.string(), to: z.string() });
+export const DbStructureSchema = z.object({
+  id: z.string(),
+  tables: z.array(DbTableSchema),
+  foreignKeys: z.array(DbForeignKeySchema),
+  routines: z.array(z.string()),
+});
+export type DbStructure = z.infer<typeof DbStructureSchema>;
+
+export const SensitiveColumnSchema = z.object({
+  /** schema.tabela.coluna */
+  column: z.string(),
+  /** Tipo de dado sensível (CPF, salário, senha...). */
+  kind: z.string(),
+});
+export type SensitiveColumn = z.infer<typeof SensitiveColumnSchema>;
+
+/** Resumo de um banco no inventário. */
+export const DatabaseSchema = z.object({
+  id: z.string(),
+  engine: z.enum(["sqlserver", "postgres"]),
+  host: z.string(),
+  port: z.number(),
+  database: z.string(),
+  serverVersion: z.string().optional(),
+  collectedAt: z.string(),
+  /** Usuário do sistema operacional que fez a leitura (a credencial do banco nunca é gravada). */
+  by: z.string(),
+  /** Usuário de banco usado (só o nome, nunca a senha). */
+  dbUser: z.string(),
+  tables: z.number(),
+  views: z.number(),
+  routines: z.number(),
+  /** Maiores tabelas pela estimativa de linhas: indicam o coração do sistema. */
+  largestTables: z.array(z.object({ name: z.string(), approxRows: z.number() })),
+  /** Áreas de negócio que a estrutura sugere (clientes, pedidos, estoque, RH...). */
+  areas: z.array(z.string()),
+  systems: z.array(SystemMatchSchema),
+  sensitive: z.array(SensitiveColumnSchema),
+  structureFile: z.string(),
+});
+export type Database = z.infer<typeof DatabaseSchema>;
+
 export const InventorySchema = z.object({
   schemaVersion: z.literal(1),
   updatedAt: z.string(),
   hosts: z.array(HostSchema),
   /** Opcional para manter compatibilidade com inventários criados antes do coletor de rede. */
   network: NetworkSchema.default({ scans: [], devices: [] }),
+  databases: z.array(DatabaseSchema).default([]),
 });
 export type Inventory = z.infer<typeof InventorySchema>;
 

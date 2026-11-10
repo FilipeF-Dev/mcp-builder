@@ -21,7 +21,7 @@ Depois é só seguir o menu. Na dúvida, escolha **1. Continuar**.
 | Etapa | O que acontece | Situação |
 |---|---|---|
 | 1. Conhecer o negócio | Entrevista em 6 níveis: do ramo de atuação ao que o agente pode fazer | ✅ |
-| 2. Mapear a tecnologia | Análise somente leitura dos computadores e varredura da rede (com autorização) | ✅ computadores e rede · 🔜 bancos |
+| 2. Mapear a tecnologia | Análise somente leitura dos computadores, da rede (com autorização) e da estrutura dos bancos | ✅ computadores, rede e bancos |
 | 3. Resolver pendências | O que a ferramenta não entendeu vira pergunta para uma pessoa | ✅ |
 | 4. Montar o agente | Skills e regras de segurança: fixas (LGPD, senhas...) e adaptadas ao que foi encontrado | ✅ |
 | 5. Revisar e entregar | O TI aprova item a item; o servidor MCP é montado só com o aprovado, pronto para o Claude | ✅ |

@@ -14,6 +14,8 @@ export class Prompter {
   private buffer: string[] = [];
   private waiters: Array<(line: string | null) => void> = [];
   private closed = false;
+  /** Quando true, o que é digitado não aparece na tela (senhas). */
+  private muted = false;
 
   static shared(): Prompter {
     if (!Prompter.instance) Prompter.instance = new Prompter();
@@ -27,6 +29,14 @@ export class Prompter {
 
   private constructor() {
     this.rl = createInterface({ input: process.stdin, terminal: process.stdin.isTTY ?? false });
+    // Esconde a digitação enquanto "muted": cada caractere vira *, e a quebra de linha passa.
+    const rlAny = this.rl as unknown as { _writeToOutput: (s: string) => void; output: NodeJS.WriteStream };
+    const original = rlAny._writeToOutput?.bind(this.rl);
+    rlAny._writeToOutput = (s: string) => {
+      if (!this.muted) return original?.(s);
+      if (/[\r\n]/.test(s)) process.stdout.write("\n");
+      else if (s.length === 1) process.stdout.write("*");
+    };
     this.rl.on("line", (line) => {
       const w = this.waiters.shift();
       if (w) w(line);
@@ -50,6 +60,23 @@ export class Prompter {
     if (next !== undefined) return echo(next);
     if (this.closed) return null;
     return new Promise((resolve) => this.waiters.push((line) => resolve(echo(line))));
+  }
+
+  /** Pergunta sem mostrar o que é digitado. Sem terminal (testes, automação), lê normalmente sem ecoar. */
+  async askSecret(question: string): Promise<string | null> {
+    this.muted = true;
+    try {
+      process.stdout.write(question);
+      const next = this.buffer.shift();
+      if (next !== undefined) {
+        process.stdout.write("\n");
+        return next;
+      }
+      if (this.closed) return null;
+      return await new Promise((resolve) => this.waiters.push(resolve));
+    } finally {
+      this.muted = false;
+    }
   }
 
   /** Pergunta sim/não. Enter aceita o padrão. */

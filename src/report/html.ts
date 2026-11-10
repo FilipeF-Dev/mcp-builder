@@ -121,6 +121,17 @@ export function renderReport(ws: Workspace): string {
       <table><tr><th>Endereço</th><th>Tipo provável</th><th>Serviços</th><th>Sistemas reconhecidos</th></tr>${net.devices.map(deviceRow).join("")}</table>`
       : `<p class="muted">Nenhuma varredura de rede feita ainda. No menu: Mapear a tecnologia → Varrer a rede (exige autorização do responsável pela rede).</p>`;
 
+  // ── Bancos de dados ──
+  const dbRow = (d: (typeof inv.databases)[number]) => {
+    const kinds = [...new Set(d.sensitive.map((s) => s.kind))];
+    const systems = d.systems.map((x) => `${esc(x.systemName)} <span class="tag ${x.confidence}">${esc(confidenceLabel(x.confidence))}</span>`).join("<br>");
+    return `<tr><td><b>${esc(d.database)}</b><div class="muted small">${esc(d.serverVersion ?? d.engine)} · ${esc(d.host)}:${d.port}</div></td><td class="small">${d.tables} tabelas · ${d.views} views</td><td class="small">${esc(d.areas.join(", ")) || "—"}</td><td class="small">${systems || "—"}</td><td class="small">${kinds.length ? `<span class="tag warn">${esc(kinds.join(", "))}</span>` : "—"}</td></tr>`;
+  };
+  const databasesHtml = inv.databases.length
+    ? `<p class="muted small">Só a estrutura foi lida (tabelas e colunas). Nenhum dado de cliente, pedido ou colaborador foi acessado.</p>
+      <table><tr><th>Banco</th><th>Tamanho</th><th>Áreas sugeridas</th><th>Sistema provável</th><th>Dados sensíveis</th></tr>${inv.databases.map(dbRow).join("")}</table>`
+    : `<p class="muted">Nenhum banco lido ainda. No menu: Mapear a tecnologia → Ler a estrutura de um banco de dados.</p>`;
+
   // ── Pendências ──
   const groups = new Map<string, typeof open>();
   for (const q of open) groups.set(q.topic, [...(groups.get(q.topic) ?? []), q]);
@@ -274,6 +285,9 @@ ${hostsHtml}
 
 <h3>Rede</h3>
 ${networkHtml}
+
+<h3>Bancos de dados</h3>
+${databasesHtml}
 
 <h2>O agente: skills e regras</h2>
 <p class="muted">O que o agente sabe fazer, e por que cada habilidade existe nesta empresa. Cada skill só é refeita quando as informações das quais depende mudam.</p>

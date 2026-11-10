@@ -43,6 +43,12 @@ Ela só abre conexões comuns, como um navegador faria, e lê o que cada serviç
 **A varredura não encontrou um servidor que eu sei que existe.**
 Ele pode ter um firewall que bloqueia as portas verificadas, ou estar em outra faixa de rede. Peça ao TI a faixa certa, ou rode a análise de computador diretamente nele.
 
+**A ferramenta vai ver os dados dos meus clientes?**
+Não. Nos bancos, ela lê só a estrutura: nomes de tabelas e colunas. O ideal é usar um usuário de banco que nem tem permissão de ler dados (o passo a passo para o TI está em [A análise técnica](04-analise-tecnica.md#leitura-de-bancos-de-dados)).
+
+**O meu banco é Firebird (ou MySQL, Oracle).**
+Ainda não é suportado para leitura de estrutura. A varredura de rede e a análise de computador reconhecem esses bancos, e eles aparecem nas pendências.
+
 **O antivírus bloqueou a ferramenta.**
 A ferramenta usa comandos padrão do Windows (PowerShell) para ler a configuração, e alguns antivírus estranham isso. Peça ao TI para liberar a pasta do MCP-Builder. Por isso, também, é importante avisar o TI antes (veja [Segurança](05-seguranca-e-privacidade.md)).
 

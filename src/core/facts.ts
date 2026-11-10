@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { confidenceLabel } from "./labels.js";
-import type { Approvals, CompanyProfile, Host, Inventory, NetDevice, Question } from "./schema.js";
+import type { Approvals, CompanyProfile, Database, Host, Inventory, NetDevice, Question } from "./schema.js";
 
 /**
  * FATOS: tudo o que se sabe sobre a empresa, achatado em pares chave → valor legível.
@@ -84,6 +84,33 @@ export function networkFacts(devices: NetDevice[]): Facts {
   return f;
 }
 
+/**
+ * Fatos de bancos de dados (resumo; o detalhe por tabela fica em databaseTableFacts):
+ *   banco:<id>:motor                 → "PostgreSQL 18.3 em srv-db:5432/erp"
+ *   banco:<id>:sistema:teknisa       → "Teknisa"
+ *   banco:<id>:area:estoque          → "estoque"
+ *   banco:<id>:sensivel:<col>        → "CPF"
+ * Derivados, independentes de banco (para skills e guardrails):
+ *   dados-sensiveis:CPF              → "erp: public.clientes.cpf; rh: dbo.funcionario.nr_cpf"
+ */
+export function databaseFacts(dbs: Database[]): Facts {
+  const f: Facts = {};
+  const byKind = new Map<string, string[]>();
+  for (const d of dbs) {
+    const p = `banco:${d.id}`;
+    f[`${p}:motor`] = `${d.serverVersion ?? d.engine} em ${d.host}:${d.port}/${d.database}`;
+    f[`${p}:tamanho`] = `${d.tables} tabela(s), ${d.views} view(s)`;
+    for (const s of d.systems) f[`${p}:sistema:${s.signatureId}`] = s.systemName;
+    for (const a of d.areas) f[`${p}:area:${a}`] = a;
+    for (const c of d.sensitive) {
+      f[`${p}:sensivel:${c.column}`] = c.kind;
+      byKind.set(c.kind, [...(byKind.get(c.kind) ?? []), `${d.database}: ${c.column}`]);
+    }
+  }
+  for (const [kind, cols] of byKind) f[`dados-sensiveis:${kind}`] = cols.sort().join("; ");
+  return f;
+}
+
 /** Pergunta feita por um modelo de skill (tópico "skill:<skill>:<chave>"): a resposta vira fato estável. */
 export const SKILL_TOPIC = "skill:";
 
@@ -110,6 +137,7 @@ export function systemFacts(inv: Inventory): Facts {
   const sources = [
     ...inv.hosts.map((h) => ({ label: h.hostname, systems: h.systems })),
     ...(inv.network?.devices ?? []).map((d) => ({ label: d.hostname ?? d.ip, systems: d.systems })),
+    ...(inv.databases ?? []).map((d) => ({ label: `banco ${d.database} (${d.host})`, systems: d.systems })),
   ];
   for (const h of sources) {
     for (const s of h.systems) {
@@ -133,7 +161,7 @@ export function approvalFacts(a?: Approvals): Facts {
 }
 
 export function allFacts(company: CompanyProfile, inv: Inventory, qs: Question[], approvals?: Approvals): Facts {
-  return Object.assign({}, companyFacts(company), ...inv.hosts.map(hostFacts), networkFacts(inv.network?.devices ?? []), systemFacts(inv), questionFacts(qs), approvalFacts(approvals));
+  return Object.assign({}, companyFacts(company), ...inv.hosts.map(hostFacts), networkFacts(inv.network?.devices ?? []), databaseFacts(inv.databases ?? []), systemFacts(inv), questionFacts(qs), approvalFacts(approvals));
 }
 
 /** Impressão digital dos fatos que começam com algum dos prefixos. */

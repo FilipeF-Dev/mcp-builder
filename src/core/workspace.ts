@@ -1,8 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { ZodType } from "zod";
 import {
+  DbStructureSchema,
+  type DbStructure,
   ApprovalsSchema,
   type Approvals,
   ChangeSchema,
@@ -79,7 +81,7 @@ export class Workspace {
     const ts = nowIso();
     const ws = new Workspace(dir);
     ws.saveCompany({ schemaVersion: 1, name, slug, createdAt: ts, updatedAt: ts, answers: {}, deferred: [] });
-    ws.saveInventory({ schemaVersion: 1, updatedAt: ts, hosts: [], network: { scans: [], devices: [] } });
+    ws.saveInventory({ schemaVersion: 1, updatedAt: ts, hosts: [], network: { scans: [], devices: [] }, databases: [] });
     ws.saveQuestions([]);
     return ws;
   }
@@ -183,6 +185,16 @@ export class Workspace {
   }
   saveApprovals(a: Approvals): void {
     writeJson(this.path("aprovacoes.json"), a);
+  }
+
+  // estrutura completa de bancos (arquivos grandes, fora do inventário)
+  loadDbStructure(rel: string): DbStructure | undefined {
+    const p = this.path(rel);
+    return existsSync(p) ? readJson(p, DbStructureSchema) : undefined;
+  }
+  saveDbStructure(rel: string, s: DbStructure): void {
+    mkdirSync(dirname(this.path(rel)), { recursive: true });
+    writeJson(this.path(rel), s);
   }
 
   /** Guarda uma cópia da análise de uma máquina antes de ela ser substituída. */

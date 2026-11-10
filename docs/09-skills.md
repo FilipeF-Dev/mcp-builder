@@ -20,7 +20,7 @@ Existem dois tipos:
 | Skill | Para que serve | O que ela pode pedir |
 |---|---|---|
 | **Conduta do assistente** | Quem é o agente, tom de voz, o que pode e não pode fazer, transparência | (usa o nível 6 da entrevista) |
-| **LGPD e dados pessoais** | Proteger dados pessoais, encaminhar pedidos de titulares, agir em incidentes | Encarregado de dados (DPO); canal para pedidos de titulares |
+| **LGPD e dados pessoais** | Proteger dados pessoais, encaminhar pedidos de titulares, agir em incidentes. Lista onde há dados pessoais nos bancos lidos. | Encarregado de dados (DPO); canal para pedidos de titulares |
 | **Senhas, acessos e golpes** | Esqueci a senha, pedir acesso, reconhecer golpes | Procedimento de troca de senha; como pedir acesso novo |
 | **Quando chamar uma pessoa** | Limites do agente e para quem encaminhar | Contato e horário do suporte; quem acionar em emergências |
 

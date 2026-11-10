@@ -80,11 +80,11 @@ export function computeStages(ws: Workspace): StageInfo[] {
     {
       number: 2,
       title: "Mapear a tecnologia",
-      what: "A ferramenta examina este computador e, com autorização, varre a rede em busca de servidores e serviços (só lê, nunca altera nada), e reconhece os sistemas da empresa.",
+      what: "A ferramenta examina este computador e, com autorização, varre a rede em busca de servidores e serviços e lê a estrutura dos bancos de dados (só lê, nunca altera nada), e reconhece os sistemas da empresa.",
       why: `Só começa depois dos níveis 1 a ${MIN_LEVEL_FOR_TECH_SCAN} da entrevista, para que o que for encontrado possa ser interpretado.`,
       you: "Varrer a rede (com autorização do responsável) e analisar os servidores principais e um computador típico de cada área.",
       state: s2,
-      progress: `${inv.hosts.length} máquina(s) analisada(s) · ${inv.network.devices.length} equipamento(s) na rede`,
+      progress: `${inv.hosts.length} máquina(s) analisada(s) · ${inv.network.devices.length} equipamento(s) na rede · ${inv.databases.length} banco(s) lido(s)`,
     },
     {
       number: 3,

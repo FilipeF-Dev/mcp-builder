@@ -6,6 +6,8 @@ import { userInfo } from "node:os";
 import { scanNetwork } from "./collectors/network/index.js";
 import { analyzeNetwork, compareNetwork } from "./collectors/network/analyze.js";
 import { expandAll } from "./collectors/network/ranges.js";
+import { READERS, friendlyDbError, type DbTarget } from "./collectors/database/readers.js";
+import { analyzeDatabase, compareDatabase, readDatabase } from "./collectors/database/index.js";
 import { join } from "node:path";
 import { Workspace, nowIso } from "./core/workspace.js";
 import { decide, reviewItems, reviewSummary } from "./delivery/approvals.js";
@@ -315,4 +317,78 @@ export async function scanNetworkAction(ws: Workspace, req: NetworkScanRequest):
   console.log(`\n  ${added} nova(s) pendência(s) para confirmar com pessoas.`);
   if (refreshed.regenerated.length) console.log(ui.dim(`  Atualizado: ${refreshed.regenerated.join(", ")}`));
   return true;
+}
+
+export interface DatabaseReadRequest {
+  target: DbTarget;
+  /** Bancos a ler; vazio = todos os que o usuário enxerga (até 20). */
+  databases?: string[];
+}
+
+/** Lista os bancos disponíveis no servidor (para a pessoa escolher). */
+export async function listServerDatabases(target: DbTarget): Promise<string[]> {
+  return READERS[target.engine].listDatabases(target);
+}
+
+/**
+ * Etapa 2 (bancos): lê a ESTRUTURA de um ou mais bancos. A senha só existe em memória.
+ * Grava: resumo no inventário + estrutura completa em bancos/<id>.json.
+ */
+export async function readDatabasesAction(ws: Workspace, req: DatabaseReadRequest): Promise<boolean> {
+  const done = completedUpTo(ws.loadCompany());
+  if (done < MIN_LEVEL_FOR_TECH_SCAN) {
+    console.log(ui.yellow(`\nA leitura de bancos é liberada depois dos níveis 1 a ${MIN_LEVEL_FOR_TECH_SCAN} da entrevista.`));
+    return false;
+  }
+  const t = req.target;
+  let names: string[];
+  try {
+    names = req.databases?.length ? req.databases : await listServerDatabases(t);
+  } catch (e) {
+    console.log(ui.red(`
+Não foi possível conectar: ${friendlyDbError(e)}`));
+    return false;
+  }
+  if (names.length > 20) {
+    console.log(ui.yellow(`  O servidor tem ${names.length} bancos; lendo os 20 primeiros. Para escolher, informe os nomes.`));
+    names = names.slice(0, 20);
+  }
+  if (!names.length) {
+    console.log(ui.yellow("  Nenhum banco acessível com esse usuário."));
+    return false;
+  }
+
+  const questions: Parameters<typeof ws.addQuestions>[0] = [];
+  let ok = 0;
+  for (const name of names) {
+    process.stdout.write(`  Lendo a estrutura de "${name}"... `);
+    try {
+      const next = await readDatabase(t, name);
+      const inv = ws.loadInventory();
+      const prevSummary = inv.databases.find((d) => d.id === next.summary.id);
+      if (prevSummary) {
+        const prevStructure = ws.loadDbStructure(prevSummary.structureFile);
+        const cmp = compareDatabase({ summary: prevSummary, structure: prevStructure }, next);
+        ws.appendChanges(cmp.changes);
+        questions.push(...cmp.questions);
+      }
+      ws.saveDbStructure(next.summary.structureFile, next.structure);
+      inv.databases = [...inv.databases.filter((d) => d.id !== next.summary.id), next.summary];
+      ws.saveInventory(inv);
+      questions.push(...analyzeDatabase(next.summary));
+      ok++;
+      const s = next.summary;
+      console.log(ui.green("ok"));
+      console.log(ui.dim(`    ${s.tables} tabelas, ${s.views} views${s.areas.length ? ` · áreas: ${s.areas.join(", ")}` : ""}${s.systems.length ? ` · sistema: ${s.systems.map((x) => x.systemName).join(", ")}` : ""}${s.sensitive.length ? ` · ${s.sensitive.length} coluna(s) sensível(is)` : ""}`));
+    } catch (e) {
+      console.log(ui.red(`falhou: ${friendlyDbError(e)}`));
+    }
+  }
+  const added = ws.addQuestions(questions);
+  const refreshed = refreshArtifacts(ws);
+  writeReport(ws);
+  console.log(ui.green(`\n✓ ${ok} de ${names.length} banco(s) lido(s). Somente a estrutura: nenhuma linha de dados foi lida.`));
+  console.log(`  ${added} nova(s) pendência(s).`);
+  if (refreshed.regenerated.length) console.log(ui.dim(`  Atualizado: ${refreshed.regenerated.join(", ")}`));
+  return ok > 0;
 }

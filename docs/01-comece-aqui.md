@@ -48,7 +48,7 @@ A ferramenta pergunta o nome da empresa e mostra um menu como este:
 O que você quer fazer?
   1. Continuar: Analisar este computador  ← recomendado
   2. Entrevista sobre o negócio
-  3. Mapear a tecnologia (este computador ou a rede)
+  3. Mapear a tecnologia (computador, rede ou bancos)
   4. Montar o agente (gerar skills)
   5. Revisar e aprovar (servidor MCP)
   6. Ver e responder pendências

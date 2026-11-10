@@ -67,6 +67,13 @@ O MCP-Builder coleta **dados sobre a tecnologia da empresa**, não sobre pessoas
 
 Inclua o uso da ferramenta no registro de atividades de tratamento da empresa, se houver, e trate a pasta `workspaces/` como dado interno.
 
+## Bancos de dados
+
+- Só a **estrutura** é lida (nomes de tabelas e colunas). Nenhuma linha de dados.
+- A senha do banco é pedida na hora, não aparece na tela e **nunca é gravada**. Na linha de comando, ela vem de uma variável de ambiente, nunca de um argumento (que ficaria no histórico).
+- Recomendado: um usuário de banco **sem permissão de ler dados** (veja [A análise técnica](04-analise-tecnica.md#peça-ao-ti-um-usuário-que-não-consegue-ler-dados)).
+- Colunas com dados pessoais encontradas viram regras de segurança automaticamente.
+
 ## O servidor MCP
 
 O servidor entregue na etapa 5 aplica as regras também em código: só existe para o agente o que o TI aprovou; CPF, CNPJ, números de cartão e senhas são mascarados em toda resposta; e cada consulta fica registrada em `logs/` (com os argumentos já mascarados). Detalhes em [Servidor MCP](10-servidor-mcp.md).

@@ -12,7 +12,7 @@ flowchart LR
 
 | Frente | Responsável por | Situação |
 |---|---|---|
-| **A. Descoberta** | Entrevista, coletores (computadores, rede, bancos, e-mail, nuvem), pendências | Entrevista ✅ · computadores ✅ · rede ✅ · bancos 🔜 |
+| **A. Descoberta** | Entrevista, coletores (computadores, rede, bancos, e-mail, nuvem), pendências | Entrevista ✅ · computadores ✅ · rede ✅ · bancos ✅ (SQL Server, PostgreSQL) |
 | **B. Conhecimento** | Fatos, histórico, comparação entre análises, geração incremental | ✅ base pronta |
 | **C. Skills** | Modelos que geram as skills e as regras do agente: fixos (LGPD...) e adaptáveis | ✅ 4 fixos + 5 adaptáveis · 🔜 mais modelos |
 | **D. Entrega** | Servidor MCP gerado, guardrails aplicados, aprovação item a item pelo TI | ✅ conhecimento aprovado · 🔜 consultas diretas a sistemas |
@@ -29,7 +29,7 @@ flowchart LR
 - Catálogo de assinaturas de sistemas conhecidos
 - Pendências para tudo o que não for interpretável
 
-**Próximos passos:** coletor de estrutura de bancos de dados, detecção de serviços em nuvem (Microsoft 365, Google Workspace) pela configuração de DNS e de clientes.
+**Próximos passos:** bancos Firebird/MySQL/Oracle, detecção de serviços em nuvem (Microsoft 365, Google Workspace) pela configuração de DNS e de clientes.
 
 ## B. Conhecimento
 

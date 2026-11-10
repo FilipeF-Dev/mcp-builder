@@ -12,9 +12,10 @@ import { ui } from "./core/ui.js";
 import { computeStages, STATE_LABEL } from "./core/stages.js";
 import { runInterview, importAnswers, printLevelSummary } from "./company/interview.js";
 import { MIN_LEVEL_FOR_TECH_SCAN } from "./company/levels.js";
-import { scanHostAction, scanNetworkAction, listQuestions, answerQuestions, buildAgentAction, reviewAction } from "./actions.js";
+import { readDatabasesAction, scanHostAction, scanNetworkAction, listQuestions, answerQuestions, buildAgentAction, reviewAction } from "./actions.js";
 import { writeReport } from "./report/html.js";
 import { guided, openFile } from "./guided.js";
+import { DEFAULT_PORT, type Engine } from "./collectors/database/readers.js";
 
 const program = new Command();
 program
@@ -80,6 +81,30 @@ scan
     }
     const extraPorts = opts.portas?.split(",").map((p) => Number(p.trim())).filter((p) => Number.isInteger(p) && p > 0 && p < 65536);
     const ok = await scanNetworkAction(ws(), { ranges: opts.faixa, extraPorts, authorized: true });
+    if (!ok) process.exitCode = 1;
+  });
+
+scan
+  .command("banco")
+  .description("lê a ESTRUTURA (tabelas, colunas) de bancos SQL Server ou PostgreSQL; nenhum dado é lido")
+  .requiredOption("--motor <motor>", "sqlserver ou postgres")
+  .requiredOption("--host <host>", "endereço do servidor")
+  .option("--porta <n>", "porta (padrão: 1433 ou 5432)", (v) => Number(v))
+  .requiredOption("--usuario <usuario>", "usuário com permissão de leitura")
+  .option("--bancos <lista>", "bancos a ler, separados por vírgula (padrão: todos, até 20)")
+  .action(async (opts: { motor: string; host: string; porta?: number; usuario: string; bancos?: string }) => {
+    if (opts.motor !== "sqlserver" && opts.motor !== "postgres") {
+      console.log(ui.yellow("Motor não suportado. Use sqlserver ou postgres."));
+      process.exitCode = 1;
+      return;
+    }
+    // A senha vem da variável de ambiente ou é pedida sem aparecer na tela. Nunca por argumento (ficaria no histórico).
+    const password = process.env.MCP_BUILDER_DB_SENHA ?? (await Prompter.shared().askSecret("Senha (não aparece na tela e não é gravada): ")) ?? "";
+    const engine = opts.motor as Engine;
+    const ok = await readDatabasesAction(ws(), {
+      target: { engine, host: opts.host, port: opts.porta ?? DEFAULT_PORT[engine], user: opts.usuario, password },
+      databases: opts.bancos?.split(",").map((s) => s.trim()).filter(Boolean),
+    });
     if (!ok) process.exitCode = 1;
   });
 
