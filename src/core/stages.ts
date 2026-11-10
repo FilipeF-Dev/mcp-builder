@@ -2,6 +2,8 @@ import type { Workspace } from "./workspace.js";
 import { completedUpTo, levelStatus } from "../company/progress.js";
 import { LEVELS, MIN_LEVEL_FOR_TECH_SCAN } from "../company/levels.js";
 import { SKILLS_DIR, loadContext, missingInfo, planSkills, skillsEnabled } from "../skills/index.js";
+import { reviewItems, reviewSummary } from "../delivery/approvals.js";
+import { serverEnabled } from "../delivery/server.js";
 
 /**
  * As ETAPAS do processo, em linguagem simples.
@@ -53,6 +55,16 @@ export function computeStages(ws: Workspace): StageInfo[] {
       p4 = `${built} skill(s) gerada(s)${missing ? `, ${missing} informação(ões) faltando` : ""}`;
     }
   }
+  // Etapa 5: revisão e servidor
+  let s5: StageState = "bloqueada";
+  let p5 = "liberada depois de montar o agente";
+  const items = reviewItems(ws);
+  if (items.some((i) => i.kind === "skill")) {
+    const r = reviewSummary(items);
+    const server = serverEnabled(ws);
+    s5 = r.approved + r.rejected === 0 ? "pendente" : r.waiting > 0 || !server ? "em-andamento" : "concluida";
+    p5 = `${r.approved} aprovado(s), ${r.waiting} aguardando revisão${server ? " · servidor MCP pronto" : ""}`;
+  }
   const s3: StageState = qs.length === 0 ? "pendente" : open === 0 ? "concluida" : "em-andamento";
 
   return [
@@ -95,11 +107,11 @@ export function computeStages(ws: Workspace): StageInfo[] {
     {
       number: 5,
       title: "Revisar e entregar",
-      what: "Um relatório para o TI aprovar item por item, e o servidor MCP pronto para conectar ao agente.",
-      why: "Nada vai para produção sem aprovação de uma pessoa.",
-      you: "Revisar e aprovar.",
-      state: "em-breve",
-      progress: "disponível em uma próxima versão",
+      what: "O TI revisa cada skill, o perfil da empresa e cada ferramenta. Com o que for aprovado, a ferramenta monta o servidor MCP que conecta o agente (ex.: Claude) à empresa.",
+      why: "Nada vai para produção sem aprovação de uma pessoa. Se algo mudar depois, só o que mudou precisa de nova revisão.",
+      you: "Escolher \"Revisar e aprovar\" e depois seguir o LEIA-ME do servidor (instalar e conectar ao Claude).",
+      state: s5,
+      progress: p5,
     },
   ];
 }

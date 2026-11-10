@@ -85,9 +85,15 @@ Alguns modelos são **fixos** e valem para qualquer empresa (LGPD, senhas e golp
 
 Detalhes: [Skills](09-skills.md).
 
-### Etapa 5: Revisar e entregar *(em breve)*
+### Etapa 5: Revisar e entregar
 
-Um relatório para o TI aprovar item por item, e o **servidor MCP**: o programa que conecta o assistente de IA aos sistemas da empresa, com as regras de segurança aplicadas.
+**O que acontece:** uma pessoa do TI revisa cada skill, o perfil da empresa e cada ferramenta, e aprova ou recusa. Com o que foi aprovado, a ferramenta monta o **servidor MCP**: o programa que conecta o assistente de IA (como o Claude) ao conhecimento da empresa, aplicando as regras de segurança.
+
+**Por que existe:** nada chega ao agente sem uma pessoa ver antes. Se algo for refeito depois, o agente continua com a versão aprovada até a próxima revisão.
+
+**O que produz:** `saida/servidor-mcp/`, com um `LEIA-ME.md` que ensina a instalar e conectar ao Claude Desktop.
+
+Detalhes: [Revisar, aprovar e conectar](10-servidor-mcp.md).
 
 ## E quando a empresa muda?
 
@@ -104,7 +110,9 @@ workspaces/restaurante-exemplo/
 ├── changes.json       diário de mudanças entre análises
 ├── generated.json     o que foi gerado e de quais informações depende
 ├── historico/         cópia de cada análise anterior
-├── saida/             skills e regras de segurança do agente
+├── aprovacoes.json    o que o TI aprovou ou recusou
+├── aprovado/          cópia exata das versões aprovadas
+├── saida/             skills, regras de segurança e o servidor MCP
 └── context/
     ├── 01-empresa.md  perfil da empresa (para o assistente)
     └── 10-hosts.md    computadores analisados (para o assistente)

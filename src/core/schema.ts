@@ -209,3 +209,24 @@ export const ManifestSchema = z.object({
   artifacts: z.record(z.string(), ArtifactSchema),
 });
 export type Manifest = z.infer<typeof ManifestSchema>;
+
+// ───────────────────────── Aprovações (etapa 5) ─────────────────────────
+
+/**
+ * Decisões do TI sobre o que o agente pode usar: cada skill, o perfil da empresa
+ * e cada ferramenta do servidor MCP. A aprovação vale para UMA versão: se a skill
+ * for refeita (v3), a aprovação da v2 continua valendo para o que está no ar,
+ * mas a v3 precisa ser revisada.
+ */
+export const ApprovalSchema = z.object({
+  decision: z.enum(["aprovado", "recusado"]),
+  version: z.number(),
+  at: z.string(),
+});
+export type Approval = z.infer<typeof ApprovalSchema>;
+
+export const ApprovalsSchema = z.object({
+  schemaVersion: z.literal(1),
+  items: z.record(z.string(), ApprovalSchema),
+});
+export type Approvals = z.infer<typeof ApprovalsSchema>;

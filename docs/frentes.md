@@ -15,7 +15,7 @@ flowchart LR
 | **A. Descoberta** | Entrevista, coletores (computadores, rede, bancos, e-mail, nuvem), pendências | Entrevista ✅ · computadores ✅ · rede 🔜 · bancos 🔜 |
 | **B. Conhecimento** | Fatos, histórico, comparação entre análises, geração incremental | ✅ base pronta |
 | **C. Skills** | Modelos que geram as skills e as regras do agente: fixos (LGPD...) e adaptáveis | ✅ 4 fixos + 5 adaptáveis · 🔜 mais modelos |
-| **D. Entrega** | Servidor MCP gerado, guardrails aplicados, aprovação item a item pelo TI | 🔜 |
+| **D. Entrega** | Servidor MCP gerado, guardrails aplicados, aprovação item a item pelo TI | ✅ conhecimento aprovado · 🔜 consultas diretas a sistemas |
 | **E. Experiência** | Modo guiado, atalho de dois cliques, relatório, documentação para leigos | ✅ contínua |
 
 ---
@@ -64,14 +64,25 @@ Cada modelo declara:
 
 Cada skill gerada registra **de quais fatos nasceu**. Se o servidor de e-mail mudar, só as skills de e-mail são refeitas, e o TI revisa só elas.
 
-## D. Entrega *(depois das skills)*
+## D. Entrega
+
+Documentação para leigos: [Servidor MCP](10-servidor-mcp.md). Implementação: `src/delivery/` e `templates/servidor-mcp/`.
 
 **Pergunta que responde:** *como o agente se conecta à empresa com segurança?*
 
-- Projeto de servidor MCP (TypeScript, SDK oficial) com tools somente leitura por padrão
-- Guardrails aplicados no servidor, não só no texto: allow-list de consultas, mascaramento, log de auditoria
-- Relatório de aprovação: cada tool, skill e regra precisa de um "aprovado" do TI antes de ser ativada
-- Atualização incremental: uma nova versão só pede reaprovação do que mudou
+Feito:
+
+- Servidor MCP em JavaScript (SDK oficial `@modelcontextprotocol/sdk`, transporte stdio), pronto para o Claude Desktop
+- 5 ferramentas somente leitura: buscar no conhecimento, listar/ler skills, regras de segurança, preparar chamado
+- Recursos (perfil, regras, cada skill) e um prompt `assistente`
+- Proteções no servidor: só o aprovado existe, mascaramento de CPF/CNPJ/cartão/senha, aviso de senha, auditoria em JSONL
+- Aprovação item a item, por versão: uma skill refeita continua na versão aprovada até nova revisão
+
+Próximos passos:
+
+- Ferramentas de consulta direta a sistemas (ERP, chamados), somente leitura, com allow-list de consultas aprovada pelo TI
+- Ferramentas de escrita (ex.: abrir chamado de verdade) com confirmação humana a cada uso
+- Transporte HTTP para uso por vários colaboradores (Teams, intranet)
 
 ## E. Experiência
 

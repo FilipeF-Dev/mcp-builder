@@ -14,6 +14,8 @@ import { nowIso } from "./core/workspace.js";
 import { allFacts, fingerprint } from "./core/facts.js";
 import { writeCompanyContext } from "./company/context.js";
 import { writeHostsContext } from "./collectors/host/context.js";
+import { SERVER_DIR, serverEnabled, writeServer } from "./delivery/server.js";
+import { SERVER_REVISION } from "./delivery/tools.js";
 import { GUARDRAILS_PATH, SKILLS_DIR, loadContext, planSkills, skillsEnabled, writeGuardrails, writeSkill } from "./skills/index.js";
 
 export interface Generator {
@@ -62,7 +64,18 @@ export function currentGenerators(ws: Workspace): Generator[] {
     revision: plans.map((p) => `${p.templateId}@${p.revision}`).sort().join(","),
     generate: writeGuardrails,
   };
-  return [...STATIC_GENERATORS, ...skills, guardrails];
+  const out = [...STATIC_GENERATORS, ...skills, guardrails];
+  if (serverEnabled(ws)) {
+    out.push({
+      path: SERVER_DIR,
+      description: "Servidor MCP com o conteúdo aprovado",
+      // Muda quando uma aprovação muda, quando as regras mudam ou quando o nome da empresa muda.
+      dependsOn: ["aprovacao:", "empresa:nome", ...guardrails.dependsOn],
+      revision: `servidor@${SERVER_REVISION};${guardrails.revision}`,
+      generate: writeServer,
+    });
+  }
+  return out;
 }
 
 export interface RefreshResult {
@@ -74,7 +87,7 @@ export interface RefreshResult {
 
 /** Regenera só os arquivos cujos fatos mudaram. Com `force`, regenera tudo. */
 export function refreshArtifacts(ws: Workspace, force = false): RefreshResult {
-  const facts = allFacts(ws.loadCompany(), ws.loadInventory(), ws.loadQuestions());
+  const facts = allFacts(ws.loadCompany(), ws.loadInventory(), ws.loadQuestions(), ws.loadApprovals());
   const manifest = ws.loadManifest();
   const result: RefreshResult = { regenerated: [], unchanged: [], removed: [] };
   const generators = currentGenerators(ws);

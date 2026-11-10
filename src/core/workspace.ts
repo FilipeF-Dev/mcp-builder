@@ -3,6 +3,8 @@ import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { ZodType } from "zod";
 import {
+  ApprovalsSchema,
+  type Approvals,
   ChangeSchema,
   ManifestSchema,
   type Change,
@@ -27,6 +29,8 @@ import { z } from "zod";
  *     changes.json     diário de mudanças entre análises (só cresce)
  *     generated.json   manifesto: o que foi gerado e de quais fatos depende
  *     historico/       cópia de cada análise anterior, por máquina
+ *     aprovacoes.json  decisões do TI (etapa 5) + aprovado/ com as versões aprovadas
+ *     saida/           skills, regras de segurança e o servidor MCP
  *     context/         markdown gerado para o agente
  */
 
@@ -170,6 +174,15 @@ export class Workspace {
   }
   saveManifest(m: Manifest): void {
     writeJson(this.path("generated.json"), m);
+  }
+
+  // aprovações (etapa 5)
+  loadApprovals(): Approvals {
+    const p = this.path("aprovacoes.json");
+    return existsSync(p) ? readJson(p, ApprovalsSchema) : { schemaVersion: 1, items: {} };
+  }
+  saveApprovals(a: Approvals): void {
+    writeJson(this.path("aprovacoes.json"), a);
   }
 
   /** Guarda uma cópia da análise de uma máquina antes de ela ser substituída. */

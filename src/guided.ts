@@ -13,7 +13,8 @@ import { computeStages, STATE_LABEL, type StageState } from "./core/stages.js";
 import { runInterview } from "./company/interview.js";
 import { completedUpTo } from "./company/progress.js";
 import { LEVELS, MIN_LEVEL_FOR_TECH_SCAN } from "./company/levels.js";
-import { scanHostAction, listQuestions, answerQuestions, buildAgentAction } from "./actions.js";
+import { scanHostAction, listQuestions, answerQuestions, buildAgentAction, reviewAction } from "./actions.js";
+import { reviewItems } from "./delivery/approvals.js";
 import { SKILLS_DIR } from "./skills/index.js";
 import { writeReport } from "./report/html.js";
 
@@ -25,7 +26,7 @@ const ICON: Record<StageState, string> = {
   "em-breve": ui.dim("·"),
 };
 
-type Action = "entrevista" | "revisar" | "scan" | "agente" | "pendencias" | "relatorio";
+type Action = "entrevista" | "corrigir" | "scan" | "agente" | "aprovar" | "pendencias" | "relatorio";
 
 /** Abre um arquivo no programa padrão (navegador, no caso do relatório). */
 export function openFile(path: string): void {
@@ -48,6 +49,7 @@ function recommended(ws: Workspace): { action: Action; label: string } {
   if (done < LEVELS.length) return { action: "entrevista", label: `Entrevista sobre o negócio (nível ${done + 1})` };
   const builtSkills = Object.keys(ws.loadManifest().artifacts).some((p) => p.startsWith(SKILLS_DIR + "/"));
   if (!builtSkills) return { action: "agente", label: "Montar o agente (gerar skills)" };
+  if (reviewItems(ws).some((i) => i.status === "pendente" || i.status === "mudou")) return { action: "aprovar", label: "Revisar e aprovar (monta o servidor MCP)" };
   if (ws.loadQuestions().some((q) => q.status === "aberta")) return { action: "pendencias", label: "Responder pendências" };
   return { action: "relatorio", label: "Ver o relatório" };
 }
@@ -69,7 +71,7 @@ async function chooseWorkspace(p: Prompter): Promise<Workspace | null> {
         "  2. Mapear a tecnologia    (a ferramenta analisa os computadores, só lendo)",
         "  3. Resolver pendências    (o que ela não entendeu, ela pergunta)",
         "  4. Montar o agente        (skills e regras de segurança)",
-        "  5. Revisar e entregar     (em breve)",
+        "  5. Revisar e entregar     (o TI aprova; o servidor MCP é montado)",
         "",
         "Você pode parar a qualquer momento: tudo fica salvo.",
       ].join("\n"),
@@ -129,7 +131,7 @@ async function run(ws: Workspace, action: Action, p: Prompter): Promise<void> {
     case "entrevista":
       await runInterview(ws);
       break;
-    case "revisar": {
+    case "corrigir": {
       console.log(ui.bold("\nCorrigir respostas"));
       LEVELS.forEach((l) => console.log(`  ${ui.cyan(String(l.level))}. ${l.title}`));
       const raw = await p.ask("Qual nível? (Enter = voltar) > ");
@@ -165,6 +167,11 @@ async function run(ws: Workspace, action: Action, p: Prompter): Promise<void> {
       console.log(ui.dim("Nada é enviado para a internet. O que faltar vira pendência para alguém responder."));
       buildAgentAction(ws);
       break;
+    case "aprovar":
+      console.log(ui.bold("\nRevisar e aprovar"));
+      console.log("Cada skill, o perfil da empresa e cada ferramenta do servidor passam por você. O agente só usa o que for aprovado.");
+      await reviewAction(ws);
+      break;
     case "pendencias":
       if (listQuestions(ws) > 0 && (await p.confirm("\nResponder agora?"))) await answerQuestions(ws);
       break;
@@ -191,10 +198,11 @@ export async function guided(): Promise<void> {
     const analyzed = ws.loadInventory().hosts.some((h) => h.id === slugify(hostname()));
     console.log(`  ${ui.cyan("3")}. ${analyzed ? "Atualizar a análise deste computador (mostra só o que mudou)" : "Analisar este computador"}`);
     console.log(`  ${ui.cyan("4")}. Montar o agente (gerar skills)`);
-    console.log(`  ${ui.cyan("5")}. Ver e responder pendências`);
-    console.log(`  ${ui.cyan("6")}. Abrir o relatório no navegador`);
-    console.log(`  ${ui.cyan("7")}. Corrigir respostas da entrevista`);
-    console.log(`  ${ui.cyan("8")}. Como funciona?`);
+    console.log(`  ${ui.cyan("5")}. Revisar e aprovar (servidor MCP)`);
+    console.log(`  ${ui.cyan("6")}. Ver e responder pendências`);
+    console.log(`  ${ui.cyan("7")}. Abrir o relatório no navegador`);
+    console.log(`  ${ui.cyan("8")}. Corrigir respostas da entrevista`);
+    console.log(`  ${ui.cyan("9")}. Como funciona?`);
     console.log(`  ${ui.cyan("0")}. Sair`);
 
     const raw = await p.ask("> ");
@@ -202,7 +210,7 @@ export async function guided(): Promise<void> {
     const choice = raw.trim();
     if (choice === "0" || choice.toLowerCase() === "sair") break;
 
-    const map: Record<string, Action | "ajuda"> = { "1": rec.action, "2": "entrevista", "3": "scan", "4": "agente", "5": "pendencias", "6": "relatorio", "7": "revisar", "8": "ajuda" };
+    const map: Record<string, Action | "ajuda"> = { "1": rec.action, "2": "entrevista", "3": "scan", "4": "agente", "5": "aprovar", "6": "pendencias", "7": "relatorio", "8": "corrigir", "9": "ajuda" };
     const action = map[choice];
     if (!action) {
       console.log(ui.yellow("Digite o número de uma das opções."));

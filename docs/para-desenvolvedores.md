@@ -52,6 +52,10 @@ src/
 │   ├── context.ts          SkillContext: o que um modelo pode consultar
 │   ├── index.ts            planeja, renderiza SKILL.md e guardrails.md, gera pendências
 │   └── templates/          fixed.ts (LGPD, senhas, humano, conduta) · adaptive.ts (ERP, migração, e-mail...)
+├── delivery/
+│   ├── tools.ts            catálogo de ferramentas do servidor (+ revisões)
+│   ├── approvals.ts        itens revisáveis, decisões e cópias aprovadas (aprovado/)
+│   └── server.ts           monta saida/servidor-mcp a partir do aprovado
 ├── signatures/
 │   ├── catalog.ts          catálogo de sistemas conhecidos
 │   └── match.ts            pontuação de evidências → nível de certeza
@@ -149,6 +153,26 @@ Regras:
 - **Nunca invente:** o que faltar vai em `needs` e aparece no texto como `or(info(key), "...")`. As respostas viram fatos `skill-info:<skill>:<key>`.
 - O `name` precisa ser estável. Ele é a pasta da skill e a chave das pendências.
 
+## O servidor MCP entregue
+
+O código do servidor fica em `templates/servidor-mcp/servidor.js`. É JavaScript puro (ESM), para que a empresa só precise de `npm install`, sem compilar nada. Ele usa o SDK oficial `@modelcontextprotocol/sdk` (`McpServer`, `registerTool` / `registerResource` / `registerPrompt`, transporte stdio) e lê tudo de `dados/`.
+
+- **`SERVER_REVISION`** (`delivery/tools.ts`): aumente ao mudar `servidor.js`. Os servidores são refeitos **sem** pedir nova aprovação.
+- **`revision` de cada ferramenta:** aumente quando o **comportamento** de uma ferramenta mudar. Ela volta para a revisão do TI.
+- **Aprovações** (`aprovacoes.json`): `{ "skill:email": { decision, version, at } }`. Aprovar copia o arquivo para `aprovado/`, e o servidor só lê essas cópias.
+- **Geração:** o servidor é um gerador em `generation.ts` que depende de `aprovacao:`, do nome da empresa e das dependências das regras de segurança.
+
+Para testar um servidor gerado com um cliente MCP de verdade:
+
+```js
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+const client = new Client({ name: "teste", version: "1.0.0" });
+await client.connect(new StdioClientTransport({ command: "node", args: ["<pasta>/servidor.js"] }));
+console.log(await client.listTools());
+console.log(await client.callTool({ name: "buscar_conhecimento", arguments: { pergunta: "como abro um chamado?" } }));
+```
+
 ## Acrescentar uma pergunta à entrevista
 
 Edite `src/company/levels.ts`. Use um `id` estável (ele é a chave em `company.json`). Para perguntas condicionais, use `showIf`. Depois rode `npm run docs`.
@@ -168,6 +192,7 @@ Edite `src/company/levels.ts`. Use um `id` estável (ele é a chave em `company.
 - [x] Atualização incremental: fatos, diário de mudanças, histórico, regeneração seletiva
 - [x] Modelos de skill: 4 fixos + 5 adaptáveis, regeneração por skill, pendências por informação faltante
 - [ ] Mais modelos (impressoras, VPN, RH/holerite, PDV...) e enriquecimento opcional por LLM
+- [x] Etapa 5: aprovação por versão e servidor MCP com proteções (mascaramento, auditoria, só o aprovado)
+- [ ] Ferramentas de consulta direta a sistemas (somente leitura, allow-list aprovada) e transporte HTTP
 - [ ] Coletor de rede (somente faixas autorizadas)
 - [ ] Coletor de bancos de dados (estrutura, somente leitura)
-- [ ] Geração do servidor MCP e relatório de aprovação

@@ -4,6 +4,8 @@ import { computeStages, STATE_LABEL, type StageState } from "../core/stages.js";
 import { LEVELS } from "../company/levels.js";
 import { answerMap, levelStatus, visibleQuestions } from "../company/progress.js";
 import { categoryLabel, confidenceLabel, topicLabel } from "../core/labels.js";
+import { STATUS_LABEL, reviewItems, reviewSummary } from "../delivery/approvals.js";
+import { SERVER_DIR, serverEnabled } from "../delivery/server.js";
 import { GUARDRAILS_PATH, loadContext, missingInfo, planSkills, skillsEnabled } from "../skills/index.js";
 
 /**
@@ -168,19 +170,38 @@ export function renderReport(ws: Workspace): string {
     const ctx = loadContext(ws);
     const plans = planSkills(ctx);
     const built = ws.loadManifest().artifacts;
+    const review = new Map(reviewItems(ws).map((i) => [i.id, i]));
+    const reviewTag = (id: string) => {
+      const r = review.get(id);
+      if (!r) return "";
+      const cls = r.status === "aprovado" ? "alta" : r.status === "recusado" ? "warn" : "media";
+      return `<span class="tag ${cls}">${STATUS_LABEL[r.status]}${r.approvedVersion && r.status === "mudou" ? ` (no ar: v${r.approvedVersion})` : ""}</span>`;
+    };
     const row = (p: (typeof plans)[number]) => {
       const missing = missingInfo(ctx, p).length;
       const a = built[p.path];
-      return `<tr><td><b>${esc(p.title)}</b><div class="muted small"><code>${esc(p.path)}</code></div></td><td>${esc(p.area)}</td><td class="small">${esc(p.why)}</td><td>${a ? `v${a.version}` : "<i>não gerada</i>"}</td><td>${missing ? `<span class="tag warn">${missing} faltando</span>` : `<span class="tag alta">completa</span>`}</td></tr>`;
+      return `<tr><td><b>${esc(p.title)}</b><div class="muted small"><code>${esc(p.path)}</code></div></td><td>${esc(p.area)}</td><td class="small">${esc(p.why)}</td><td>${a ? `v${a.version}` : "<i>não gerada</i>"}</td><td>${missing ? `<span class="tag warn">${missing} faltando</span>` : `<span class="tag alta">completa</span>`}</td><td>${reviewTag(`skill:${p.name}`)}</td></tr>`;
     };
     const table = (kind: "fixo" | "adaptavel") => {
       const g = plans.filter((p) => p.kind === kind);
-      return g.length ? `<table><tr><th>Skill</th><th>Área</th><th>Por que existe</th><th>Versão</th><th>Informações</th></tr>${g.map(row).join("")}</table>` : "";
+      return g.length ? `<table><tr><th>Skill</th><th>Área</th><th>Por que existe</th><th>Versão</th><th>Informações</th><th>Revisão</th></tr>${g.map(row).join("")}</table>` : "";
     };
     skillsHtml = `<h3>Fixas</h3><p class="muted small">Valem para qualquer empresa (LGPD, senhas, quando chamar uma pessoa, conduta). Só os detalhes da empresa são preenchidos.</p>${table("fixo")}
       <h3>Adaptadas a esta empresa</h3><p class="muted small">Surgiram do que a entrevista e a análise encontraram.</p>${table("adaptavel") || `<p class="muted">Nenhuma ainda.</p>`}
       <p class="muted small">Regras de segurança consolidadas: <code>${GUARDRAILS_PATH}</code>. Informações faltando aparecem nas pendências.</p>`;
   }
+
+  // ── Servidor MCP ──
+  const items = reviewItems(ws);
+  const rs = reviewSummary(items);
+  const tools = items.filter((i) => i.kind === "ferramenta");
+  const serverHtml = !items.some((i) => i.kind === "skill")
+    ? `<p class="muted">Disponível depois de montar o agente.</p>`
+    : `<p>${rs.approved} item(ns) aprovado(s) · ${rs.rejected} recusado(s) · <b>${rs.waiting} aguardando revisão</b></p>
+      <table><tr><th>Ferramenta</th><th>O que faz</th><th>Revisão</th></tr>${tools
+        .map((t) => `<tr><td><b>${esc(t.title)}</b></td><td class="small">${esc(t.detail)}</td><td><span class="tag ${t.status === "aprovado" ? "alta" : t.status === "recusado" ? "warn" : "media"}">${STATUS_LABEL[t.status]}</span></td></tr>`)
+        .join("")}</table>
+      ${serverEnabled(ws) ? `<p class="small">Servidor pronto em <code>${esc(ws.path(SERVER_DIR))}</code>. Instruções de instalação e conexão ao Claude: <code>LEIA-ME.md</code> nessa pasta.</p>` : `<p class="muted small">O servidor é montado quando ao menos uma ferramenta for aprovada.</p>`}`;
 
   const updated = new Date().toLocaleString("pt-BR");
 
@@ -239,6 +260,10 @@ ${hostsHtml}
 <h2>O agente: skills e regras</h2>
 <p class="muted">O que o agente sabe fazer, e por que cada habilidade existe nesta empresa. Cada skill só é refeita quando as informações das quais depende mudam.</p>
 ${skillsHtml}
+
+<h2>Servidor MCP</h2>
+<p class="muted">O que conecta o agente à empresa. Só o que o TI aprovou fica disponível, e tudo é somente leitura.</p>
+${serverHtml}
 
 <h2>Pendências</h2>
 <p class="muted">Coisas que a ferramenta não conseguiu entender sozinha. Ela pergunta em vez de supor.</p>

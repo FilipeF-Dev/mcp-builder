@@ -1,7 +1,11 @@
 /**
  * Ações de alto nível, compartilhadas pelo menu guiado e pelos comandos avançados.
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Workspace, nowIso } from "./core/workspace.js";
+import { decide, reviewItems, reviewSummary } from "./delivery/approvals.js";
+import { SERVER_DIR, serverEnabled } from "./delivery/server.js";
 import { Prompter } from "./core/prompt.js";
 import { completedUpTo } from "./company/progress.js";
 import { LEVELS, MIN_LEVEL_FOR_TECH_SCAN } from "./company/levels.js";
@@ -160,5 +164,69 @@ export function buildAgentAction(ws: Workspace): boolean {
   for (const r of refreshed.removed) console.log(ui.yellow(`  - Removida (não se aplica mais): ${r}`));
   console.log(`\n  Arquivos em: ${ws.path("saida")}`);
   if (added) console.log(`  ${added} nova(s) pendência(s): informações que as skills precisam. Ao respondê-las, só as skills afetadas são refeitas.`);
+  return true;
+}
+
+/** Etapa 5: o TI revisa item por item; o servidor MCP é montado só com o que foi aprovado. */
+export async function reviewAction(ws: Workspace): Promise<boolean> {
+  const items = reviewItems(ws);
+  if (!items.some((i) => i.kind === "skill")) {
+    console.log(ui.yellow("\nAinda não há o que revisar: primeiro monte o agente (etapa 4)."));
+    return false;
+  }
+  const todo = items.filter((i) => i.status === "pendente" || i.status === "mudou");
+  const p = Prompter.shared();
+
+  if (todo.length) {
+    console.log(ui.bold(`\n${todo.length} item(ns) para revisar.`));
+    console.log(ui.dim("O agente só vai usar o que for aprovado aqui. Uma skill refeita depois continua na versão aprovada até ser revisada de novo."));
+    console.log(ui.dim("a = aprovar · r = recusar · v = ver o conteúdo · Enter = decidir depois · !sair = parar"));
+    let n = 0;
+    for (const item of todo) {
+      n++;
+      const kind = { skill: "Skill", contexto: "Contexto", ferramenta: "Ferramenta" }[item.kind];
+      const ver = item.kind === "ferramenta" ? "" : ` v${item.version}${item.approvedVersion ? ` (no ar: v${item.approvedVersion})` : ""}`;
+      console.log(`\n${ui.dim(`[${n}/${todo.length}]`)} ${ui.bold(`${kind}: ${item.title}`)}${ui.dim(ver)}`);
+      console.log(`  ${item.detail}`);
+      if (item.status === "mudou") console.log(ui.yellow("  Mudou desde a última aprovação."));
+      if (item.missing) console.log(ui.yellow(`  ${item.missing} informação(ões) ainda "a definir": nesses pontos o agente vai dizer que não sabe.`));
+      if (item.sourcePath) console.log(ui.dim(`  Arquivo: ${ws.path(item.sourcePath)}`));
+
+      let stop = false;
+      for (;;) {
+        const raw = await p.ask(ui.cyan("> "));
+        if (raw === null || raw.trim() === "!sair") {
+          stop = true;
+          break;
+        }
+        const t = raw.trim().toLowerCase();
+        if (t === "v" && item.sourcePath) {
+          console.log(ui.dim("─".repeat(60)));
+          console.log(readFileSync(ws.path(item.sourcePath), "utf8").trim());
+          console.log(ui.dim("─".repeat(60)));
+          continue;
+        }
+        if (t === "a" || t === "r") {
+          decide(ws, item, t === "a" ? "aprovado" : "recusado");
+          console.log(t === "a" ? ui.green("  ✓ aprovado") : ui.yellow("  ✗ recusado"));
+        }
+        break;
+      }
+      if (stop) break;
+    }
+  }
+
+  const refreshed = refreshArtifacts(ws);
+  writeReport(ws);
+  const s = reviewSummary(reviewItems(ws));
+  console.log(ui.bold(`\nRevisão: ${s.approved} aprovado(s) · ${s.rejected} recusado(s) · ${s.waiting} aguardando`));
+  if (serverEnabled(ws)) {
+    const dir = ws.path(SERVER_DIR);
+    console.log(ui.green(`\n✓ Servidor MCP ${refreshed.regenerated.includes(SERVER_DIR) ? "atualizado" : "pronto"}: ${dir}`));
+    console.log(`  Próximos passos: abra ${ui.bold(join(dir, "LEIA-ME.md"))}`);
+    console.log("  1. Instale (dois cliques em instalar.bat)   2. Cole a configuração no Claude Desktop   3. Reinicie o Claude");
+  } else {
+    console.log(ui.dim("\nO servidor MCP é montado quando ao menos uma ferramenta for aprovada."));
+  }
   return true;
 }

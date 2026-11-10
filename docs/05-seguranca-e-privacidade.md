@@ -67,6 +67,10 @@ O MCP-Builder coleta **dados sobre a tecnologia da empresa**, não sobre pessoas
 
 Inclua o uso da ferramenta no registro de atividades de tratamento da empresa, se houver, e trate a pasta `workspaces/` como dado interno.
 
+## O servidor MCP
+
+O servidor entregue na etapa 5 aplica as regras também em código: só existe para o agente o que o TI aprovou; CPF, CNPJ, números de cartão e senhas são mascarados em toda resposta; e cada consulta fica registrada em `logs/` (com os argumentos já mascarados). Detalhes em [Servidor MCP](10-servidor-mcp.md).
+
 ## O assistente que será construído
 
 As regras de segurança do assistente (guardrails) são definidas no **nível 6 da entrevista**: o que ele pode fazer, o que nunca pode fazer e quais dados são sensíveis. O padrão será sempre:

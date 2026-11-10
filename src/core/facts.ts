@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { confidenceLabel } from "./labels.js";
-import type { CompanyProfile, Host, Inventory, Question } from "./schema.js";
+import type { Approvals, CompanyProfile, Host, Inventory, Question } from "./schema.js";
 
 /**
  * FATOS: tudo o que se sabe sobre a empresa, achatado em pares chave → valor legível.
@@ -104,8 +104,15 @@ export function systemFacts(inv: Inventory): Facts {
   return f;
 }
 
-export function allFacts(company: CompanyProfile, inv: Inventory, qs: Question[]): Facts {
-  return Object.assign({}, companyFacts(company), ...inv.hosts.map(hostFacts), systemFacts(inv), questionFacts(qs));
+/** Decisões do TI: aprovacao:skill:email → "aprovado v3". */
+export function approvalFacts(a?: Approvals): Facts {
+  const f: Facts = {};
+  for (const [id, x] of Object.entries(a?.items ?? {})) f[`aprovacao:${id}`] = `${x.decision} v${x.version}`;
+  return f;
+}
+
+export function allFacts(company: CompanyProfile, inv: Inventory, qs: Question[], approvals?: Approvals): Facts {
+  return Object.assign({}, companyFacts(company), ...inv.hosts.map(hostFacts), systemFacts(inv), questionFacts(qs), approvalFacts(approvals));
 }
 
 /** Impressão digital dos fatos que começam com algum dos prefixos. */

@@ -12,7 +12,7 @@ A entrevista leva cerca de 1 hora no total e pode ser dividida em várias sessõ
 Não. Cada resposta é salva na hora. Abra a ferramenta de novo e escolha **1. Continuar**.
 
 **Respondi errado. Como corrijo?**
-No menu, escolha **7. Corrigir respostas da entrevista** e o nível. A ferramenta mostra cada resposta atual: aperte Enter para manter ou digite a nova.
+No menu, escolha **8. Corrigir respostas da entrevista** e o nível. A ferramenta mostra cada resposta atual: aperte Enter para manter ou digite a nova.
 
 **Não sei responder uma pergunta.**
 Digite `?`. Ela vira uma pendência com a sugestão de quem procurar. É muito melhor do que chutar.

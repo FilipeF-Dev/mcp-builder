@@ -25,7 +25,7 @@ Não precisa ser tudo de uma vez nem com a mesma pessoa. Quando não souber, dig
 | Enter (vazio) | pular uma pergunta opcional |
 | `!sair` | salvar e voltar ao menu |
 
-Para corrigir respostas já dadas: no menu, opção **7. Corrigir respostas da entrevista**.
+Para corrigir respostas já dadas: no menu, opção **8. Corrigir respostas da entrevista**.
 
 ## Nível 1: Identidade e ramo de atuação
 

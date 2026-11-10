@@ -12,7 +12,7 @@ import { ui } from "./core/ui.js";
 import { computeStages, STATE_LABEL } from "./core/stages.js";
 import { runInterview, importAnswers, printLevelSummary } from "./company/interview.js";
 import { MIN_LEVEL_FOR_TECH_SCAN } from "./company/levels.js";
-import { scanHostAction, listQuestions, answerQuestions, buildAgentAction } from "./actions.js";
+import { scanHostAction, listQuestions, answerQuestions, buildAgentAction, reviewAction } from "./actions.js";
 import { writeReport } from "./report/html.js";
 import { guided, openFile } from "./guided.js";
 
@@ -71,6 +71,13 @@ program
   .description("etapa 4: gera as skills e as regras de segurança do agente (só o que mudou)")
   .action(() => {
     if (!buildAgentAction(ws())) process.exitCode = 1;
+  });
+
+program
+  .command("revisar")
+  .description("etapa 5: revisa e aprova skills, perfil e ferramentas; monta o servidor MCP")
+  .action(async () => {
+    if (!(await reviewAction(ws()))) process.exitCode = 1;
   });
 
 program
