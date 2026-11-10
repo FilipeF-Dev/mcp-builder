@@ -29,7 +29,7 @@ Varrer uma rede sem permissão pode violar regras da empresa e disparar alarmes 
 A ferramenta mostra as redes deste computador, por exemplo:
 
 ```
-1. 192.168.105.0/24  (rede da placa "Wi-Fi", este computador é 192.168.105.210)
+1. 192.168.10.0/24   (rede da placa "Wi-Fi", este computador é 192.168.10.25)
 2. 172.20.160.0/20   (rede da placa "vEthernet (WSL...)"; parece virtual)
 D. Digitar outra (ex.: 192.168.1.0/24, 10.0.0.10-50)
 ```
