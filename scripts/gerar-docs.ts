@@ -43,7 +43,7 @@ const out: string[] = [
   "| Enter (vazio) | pular uma pergunta opcional |",
   "| `!sair` | salvar e voltar ao menu |",
   "",
-  "Para corrigir respostas já dadas: no menu, opção **6. Corrigir respostas da entrevista**.",
+  "Para corrigir respostas já dadas: no menu, opção **7. Corrigir respostas da entrevista**.",
   "",
 ];
 

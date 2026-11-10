@@ -47,6 +47,11 @@ src/
 │   ├── index.ts            normaliza, mascara e aplica as assinaturas
 │   ├── analyze.ts          cruza host × entrevista → pendências
 │   └── context.ts          gera context/10-hosts.md
+├── skills/
+│   ├── types.ts            contrato dos modelos de skill (SkillTemplate, SkillPlan)
+│   ├── context.ts          SkillContext: o que um modelo pode consultar
+│   ├── index.ts            planeja, renderiza SKILL.md e guardrails.md, gera pendências
+│   └── templates/          fixed.ts (LGPD, senhas, humano, conduta) · adaptive.ts (ERP, migração, e-mail...)
 ├── signatures/
 │   ├── catalog.ts          catálogo de sistemas conhecidos
 │   └── match.ts            pontuação de evidências → nível de certeza
@@ -107,6 +112,43 @@ Acrescente uma entrada em `src/signatures/catalog.ts`:
 
 Pontuação (`match.ts`): cada pista forte vale 2 e porta vale 1; ≥ 4 é alta, 2–3 média, 1 baixa.
 
+## Escrever um modelo de skill
+
+Um modelo fica em `src/skills/templates/` e é registrado em `FIXED_TEMPLATES` ou `ADAPTIVE_TEMPLATES`:
+
+```ts
+export const impressoras: SkillTemplate = {
+  id: "impressoras",
+  kind: "adaptavel",
+  revision: 1,                      // aumente ao mudar o texto: força regerar as skills deste modelo
+  summary: "Problemas de impressão.",
+  plan: (ctx) => {
+    if (!ctx.list("chamados_comuns").some((c) => /impressora/i.test(c))) return []; // não se aplica
+    return [{
+      name: "impressoras",
+      title: "Impressoras",
+      kind: "adaptavel",
+      area: "Suporte",
+      why: "Impressora está entre os chamados mais comuns.",
+      dependsOn: ["empresa:chamados_comuns", "skill-info:impressoras:"],   // o que, se mudar, regera
+      needs: [{ key: "fila", question: "Como limpar a fila de impressão travada?", askWho: "TI", why: "..." }],
+      build: (info) => ({
+        description: "Use quando alguém tiver problema para imprimir...",
+        sections: [{ title: "Fila travada", lines: [or(info("fila"), "como limpar a fila")] }],
+        guardrails: ["Nunca orientar a reinstalar drivers sem o TI."],
+      }),
+    }];
+  },
+};
+```
+
+Regras:
+
+- **Leia só pelo `ctx`** (`a()`, `list()`, `mentions()`, `systems()`), e declare em `dependsOn` todo prefixo de fato que você usar. Uma dependência faltando faz a skill ficar desatualizada; uma sobrando só faz regerar à toa.
+- Use os fatos derivados `sistema:<id>` e `categoria:<cat>` em vez de `host:`, para não regerar a cada mudança irrelevante numa máquina.
+- **Nunca invente:** o que faltar vai em `needs` e aparece no texto como `or(info(key), "...")`. As respostas viram fatos `skill-info:<skill>:<key>`.
+- O `name` precisa ser estável. Ele é a pasta da skill e a chave das pendências.
+
 ## Acrescentar uma pergunta à entrevista
 
 Edite `src/company/levels.ts`. Use um `id` estável (ele é a chave em `company.json`). Para perguntas condicionais, use `showIf`. Depois rode `npm run docs`.
@@ -124,8 +166,8 @@ Edite `src/company/levels.ts`. Use um `id` estável (ele é a chave em `company.
 - [x] Entrevista em níveis, pendências, relatório, modo guiado
 - [x] Coletor de host (Windows testado; Linux implementado, ainda sem teste em campo)
 - [x] Atualização incremental: fatos, diário de mudanças, histórico, regeneração seletiva
-- [ ] Modelos de skill: fixos (LGPD...) e adaptáveis, com rastreio de origem (frente C)
+- [x] Modelos de skill: 4 fixos + 5 adaptáveis, regeneração por skill, pendências por informação faltante
+- [ ] Mais modelos (impressoras, VPN, RH/holerite, PDV...) e enriquecimento opcional por LLM
 - [ ] Coletor de rede (somente faixas autorizadas)
 - [ ] Coletor de bancos de dados (estrutura, somente leitura)
-- [ ] Síntese com LLM: contexto, skills e guardrails (com remoção de dados pessoais e confirmação antes do envio)
 - [ ] Geração do servidor MCP e relatório de aprovação

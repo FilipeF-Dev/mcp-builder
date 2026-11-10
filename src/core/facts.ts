@@ -67,14 +67,45 @@ export function hostFacts(h: Host): Facts {
   return f;
 }
 
+/** Pergunta feita por um modelo de skill (tópico "skill:<skill>:<chave>"): a resposta vira fato estável. */
+export const SKILL_TOPIC = "skill:";
+
 export function questionFacts(qs: Question[]): Facts {
   const f: Facts = {};
-  for (const q of qs) if (q.status === "respondida" && q.answer) f[`pendencia:${q.id}`] = `${q.text} → ${q.answer}`;
+  for (const q of qs) {
+    if (q.status !== "respondida" || !q.answer) continue;
+    if (q.topic.startsWith(SKILL_TOPIC)) f[`skill-info:${q.topic.slice(SKILL_TOPIC.length)}`] = q.answer;
+    else f[`pendencia:${q.id}`] = `${q.text} → ${q.answer}`;
+  }
+  return f;
+}
+
+/**
+ * Fatos DERIVADOS, independentes de máquina: "qual sistema existe e onde".
+ *   sistema:teknisa      → "Teknisa em: SRV01, CAIXA02"
+ *   categoria:email      → "Microsoft Exchange Server"
+ * Permitem que uma skill dependa de "existe um servidor de e-mail" sem depender
+ * de tudo o que acontece em cada máquina.
+ */
+export function systemFacts(inv: Inventory): Facts {
+  const bySig = new Map<string, { name: string; hosts: string[] }>();
+  const byCat = new Map<string, Set<string>>();
+  for (const h of inv.hosts) {
+    for (const s of h.systems) {
+      const cur = bySig.get(s.signatureId) ?? { name: s.systemName, hosts: [] };
+      cur.hosts.push(h.hostname);
+      bySig.set(s.signatureId, cur);
+      byCat.set(s.category, (byCat.get(s.category) ?? new Set()).add(s.systemName));
+    }
+  }
+  const f: Facts = {};
+  for (const [id, v] of bySig) f[`sistema:${id}`] = `${v.name} em: ${v.hosts.sort().join(", ")}`;
+  for (const [cat, names] of byCat) f[`categoria:${cat}`] = [...names].sort().join("; ");
   return f;
 }
 
 export function allFacts(company: CompanyProfile, inv: Inventory, qs: Question[]): Facts {
-  return Object.assign({}, companyFacts(company), ...inv.hosts.map(hostFacts), questionFacts(qs));
+  return Object.assign({}, companyFacts(company), ...inv.hosts.map(hostFacts), systemFacts(inv), questionFacts(qs));
 }
 
 /** Impressão digital dos fatos que começam com algum dos prefixos. */

@@ -1,6 +1,7 @@
 import type { Workspace } from "./workspace.js";
 import { completedUpTo, levelStatus } from "../company/progress.js";
 import { LEVELS, MIN_LEVEL_FOR_TECH_SCAN } from "../company/levels.js";
+import { SKILLS_DIR, loadContext, missingInfo, planSkills, skillsEnabled } from "../skills/index.js";
 
 /**
  * As ETAPAS do processo, em linguagem simples.
@@ -37,6 +38,21 @@ export function computeStages(ws: Workspace): StageInfo[] {
   const s1: StageState = done === LEVELS.length ? "concluida" : anyAnswered ? "em-andamento" : "pendente";
   const canScan = done >= MIN_LEVEL_FOR_TECH_SCAN;
   const s2: StageState = !canScan ? "bloqueada" : inv.hosts.length > 0 ? "em-andamento" : "pendente";
+  // Etapa 4: skills
+  let s4: StageState = "bloqueada";
+  let p4 = "liberada quando a entrevista estiver completa";
+  if (skillsEnabled(ws)) {
+    const built = Object.keys(ws.loadManifest().artifacts).filter((p) => p.startsWith(SKILLS_DIR + "/")).length;
+    if (built === 0) {
+      s4 = "pendente";
+      p4 = "pronta para montar";
+    } else {
+      const ctx = loadContext(ws);
+      const missing = planSkills(ctx).reduce((n, p) => n + missingInfo(ctx, p).length, 0);
+      s4 = missing ? "em-andamento" : "concluida";
+      p4 = `${built} skill(s) gerada(s)${missing ? `, ${missing} informação(ões) faltando` : ""}`;
+    }
+  }
   const s3: StageState = qs.length === 0 ? "pendente" : open === 0 ? "concluida" : "em-andamento";
 
   return [
@@ -70,11 +86,11 @@ export function computeStages(ws: Workspace): StageInfo[] {
     {
       number: 4,
       title: "Montar o agente",
-      what: "Com tudo entendido, a IA escreve o contexto, as habilidades (skills) e as regras de segurança (guardrails) do agente.",
-      why: "Só agora existe informação suficiente e confirmada para o agente ser útil e seguro.",
-      you: "Nada: esta etapa é automática.",
-      state: "em-breve",
-      progress: "disponível em uma próxima versão",
+      what: "Modelos prontos geram as habilidades (skills) e as regras de segurança (guardrails) do agente: algumas fixas, como LGPD, e outras adaptadas ao que foi encontrado na empresa.",
+      why: "Só com a entrevista completa existe informação suficiente para o agente ser útil e seguro. O nível 6 define os limites dele.",
+      you: "Escolher \"Montar o agente\" e responder as informações que as skills pedirem.",
+      state: s4,
+      progress: p4,
     },
     {
       number: 5,

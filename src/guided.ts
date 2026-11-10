@@ -13,7 +13,8 @@ import { computeStages, STATE_LABEL, type StageState } from "./core/stages.js";
 import { runInterview } from "./company/interview.js";
 import { completedUpTo } from "./company/progress.js";
 import { LEVELS, MIN_LEVEL_FOR_TECH_SCAN } from "./company/levels.js";
-import { scanHostAction, listQuestions, answerQuestions } from "./actions.js";
+import { scanHostAction, listQuestions, answerQuestions, buildAgentAction } from "./actions.js";
+import { SKILLS_DIR } from "./skills/index.js";
 import { writeReport } from "./report/html.js";
 
 const ICON: Record<StageState, string> = {
@@ -24,7 +25,7 @@ const ICON: Record<StageState, string> = {
   "em-breve": ui.dim("·"),
 };
 
-type Action = "entrevista" | "revisar" | "scan" | "pendencias" | "relatorio";
+type Action = "entrevista" | "revisar" | "scan" | "agente" | "pendencias" | "relatorio";
 
 /** Abre um arquivo no programa padrão (navegador, no caso do relatório). */
 export function openFile(path: string): void {
@@ -45,6 +46,8 @@ function recommended(ws: Workspace): { action: Action; label: string } {
   if (done < MIN_LEVEL_FOR_TECH_SCAN) return { action: "entrevista", label: `Entrevista sobre o negócio (nível ${done + 1})` };
   if (ws.loadInventory().hosts.length === 0) return { action: "scan", label: "Analisar este computador" };
   if (done < LEVELS.length) return { action: "entrevista", label: `Entrevista sobre o negócio (nível ${done + 1})` };
+  const builtSkills = Object.keys(ws.loadManifest().artifacts).some((p) => p.startsWith(SKILLS_DIR + "/"));
+  if (!builtSkills) return { action: "agente", label: "Montar o agente (gerar skills)" };
   if (ws.loadQuestions().some((q) => q.status === "aberta")) return { action: "pendencias", label: "Responder pendências" };
   return { action: "relatorio", label: "Ver o relatório" };
 }
@@ -65,7 +68,7 @@ async function chooseWorkspace(p: Prompter): Promise<Workspace | null> {
         "  1. Conhecer o negócio     (você responde uma entrevista)",
         "  2. Mapear a tecnologia    (a ferramenta analisa os computadores, só lendo)",
         "  3. Resolver pendências    (o que ela não entendeu, ela pergunta)",
-        "  4. Montar o agente        (em breve)",
+        "  4. Montar o agente        (skills e regras de segurança)",
         "  5. Revisar e entregar     (em breve)",
         "",
         "Você pode parar a qualquer momento: tudo fica salvo.",
@@ -156,6 +159,12 @@ async function run(ws: Workspace, action: Action, p: Prompter): Promise<void> {
       }
       break;
     }
+    case "agente":
+      console.log(ui.bold("\nMontar o agente"));
+      console.log("Os modelos de skill vão escrever o que o agente sabe fazer e as regras que ele nunca pode quebrar.");
+      console.log(ui.dim("Nada é enviado para a internet. O que faltar vira pendência para alguém responder."));
+      buildAgentAction(ws);
+      break;
     case "pendencias":
       if (listQuestions(ws) > 0 && (await p.confirm("\nResponder agora?"))) await answerQuestions(ws);
       break;
@@ -181,10 +190,11 @@ export async function guided(): Promise<void> {
     console.log(`  ${ui.cyan("2")}. Entrevista sobre o negócio`);
     const analyzed = ws.loadInventory().hosts.some((h) => h.id === slugify(hostname()));
     console.log(`  ${ui.cyan("3")}. ${analyzed ? "Atualizar a análise deste computador (mostra só o que mudou)" : "Analisar este computador"}`);
-    console.log(`  ${ui.cyan("4")}. Ver e responder pendências`);
-    console.log(`  ${ui.cyan("5")}. Abrir o relatório no navegador`);
-    console.log(`  ${ui.cyan("6")}. Corrigir respostas da entrevista`);
-    console.log(`  ${ui.cyan("7")}. Como funciona?`);
+    console.log(`  ${ui.cyan("4")}. Montar o agente (gerar skills)`);
+    console.log(`  ${ui.cyan("5")}. Ver e responder pendências`);
+    console.log(`  ${ui.cyan("6")}. Abrir o relatório no navegador`);
+    console.log(`  ${ui.cyan("7")}. Corrigir respostas da entrevista`);
+    console.log(`  ${ui.cyan("8")}. Como funciona?`);
     console.log(`  ${ui.cyan("0")}. Sair`);
 
     const raw = await p.ask("> ");
@@ -192,7 +202,7 @@ export async function guided(): Promise<void> {
     const choice = raw.trim();
     if (choice === "0" || choice.toLowerCase() === "sair") break;
 
-    const map: Record<string, Action | "ajuda"> = { "1": rec.action, "2": "entrevista", "3": "scan", "4": "pendencias", "5": "relatorio", "6": "revisar", "7": "ajuda" };
+    const map: Record<string, Action | "ajuda"> = { "1": rec.action, "2": "entrevista", "3": "scan", "4": "agente", "5": "pendencias", "6": "relatorio", "7": "revisar", "8": "ajuda" };
     const action = map[choice];
     if (!action) {
       console.log(ui.yellow("Digite o número de uma das opções."));

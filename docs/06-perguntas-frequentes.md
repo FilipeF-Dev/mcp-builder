@@ -12,7 +12,7 @@ A entrevista leva cerca de 1 hora no total e pode ser dividida em várias sessõ
 Não. Cada resposta é salva na hora. Abra a ferramenta de novo e escolha **1. Continuar**.
 
 **Respondi errado. Como corrijo?**
-No menu, escolha **6. Corrigir respostas da entrevista** e o nível. A ferramenta mostra cada resposta atual: aperte Enter para manter ou digite a nova.
+No menu, escolha **7. Corrigir respostas da entrevista** e o nível. A ferramenta mostra cada resposta atual: aperte Enter para manter ou digite a nova.
 
 **Não sei responder uma pergunta.**
 Digite `?`. Ela vira uma pendência com a sugestão de quem procurar. É muito melhor do que chutar.
@@ -52,7 +52,7 @@ Ele provavelmente ainda não está no catálogo. A análise continua válida, e 
 É um padrão aberto que permite a um assistente de IA se conectar com segurança aos sistemas de uma empresa. Veja o [Glossário](07-glossario.md).
 
 **Os dados da minha empresa vão para algum lugar?**
-Nas etapas 1 a 3, não: tudo fica no seu computador. Na etapa 4 (em breve), um resumo **sem senhas e sem dados pessoais** será enviado a uma IA, com a sua confirmação. Veja [Segurança e privacidade](05-seguranca-e-privacidade.md).
+Não. Hoje todas as etapas rodam no seu computador, inclusive a montagem das skills, que usa modelos prontos. Se no futuro houver uma opção de enriquecer as skills com uma IA externa, ela vai enviar só um resumo **sem senhas e sem dados pessoais**, e só com a sua confirmação. Veja [Segurança e privacidade](05-seguranca-e-privacidade.md).
 
 **Funciona com o meu ERP?**
 A ferramenta funciona com qualquer empresa: o que ela não reconhece, ela pergunta. O catálogo já reconhece vários ERPs e bancos de dados usados no Brasil, e cresce com contribuições.

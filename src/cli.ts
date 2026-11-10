@@ -12,7 +12,7 @@ import { ui } from "./core/ui.js";
 import { computeStages, STATE_LABEL } from "./core/stages.js";
 import { runInterview, importAnswers, printLevelSummary } from "./company/interview.js";
 import { MIN_LEVEL_FOR_TECH_SCAN } from "./company/levels.js";
-import { scanHostAction, listQuestions, answerQuestions } from "./actions.js";
+import { scanHostAction, listQuestions, answerQuestions, buildAgentAction } from "./actions.js";
 import { writeReport } from "./report/html.js";
 import { guided, openFile } from "./guided.js";
 
@@ -64,6 +64,13 @@ scan
   .action(async (opts: { forcar?: boolean }) => {
     const ok = await scanHostAction(ws(), opts.forcar);
     if (!ok) process.exitCode = 1;
+  });
+
+program
+  .command("agente")
+  .description("etapa 4: gera as skills e as regras de segurança do agente (só o que mudou)")
+  .action(() => {
+    if (!buildAgentAction(ws())) process.exitCode = 1;
   });
 
 program

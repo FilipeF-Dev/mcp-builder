@@ -21,6 +21,7 @@ export function categoryLabel(c: string): string {
 export function topicLabel(topic: string): string {
   if (topic.startsWith("host:")) return `Computador ${topic.slice(5)}`;
   if (topic.startsWith("entrevista:")) return "Entrevista sobre o negócio";
+  if (topic.startsWith("skill:")) return `Skill "${topic.split(":")[1]}": informações que faltam`;
   return topic;
 }
 

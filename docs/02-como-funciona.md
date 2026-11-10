@@ -70,15 +70,20 @@ Detalhes: [A análise técnica](04-analise-tecnica.md).
 
 **O que produz:** `questions.json`, com as respostas incorporadas ao conhecimento da empresa.
 
-### Etapa 4: Montar o agente *(em breve)*
+### Etapa 4: Montar o agente
 
-Com o negócio entendido, a tecnologia mapeada e as dúvidas resolvidas, uma IA escreve:
+**O que acontece:** **modelos de skill** transformam o que foi aprendido em:
 
-- **Contexto:** o que o assistente precisa saber sobre a empresa
-- **Skills (habilidades):** procedimentos passo a passo, como "como abrir um chamado" ou "como consultar um pedido"
-- **Guardrails (regras de segurança):** o que o assistente nunca pode fazer, quais dados nunca pode mostrar, quando precisa pedir aprovação
+- **Skills (habilidades):** instruções que o agente segue, como "quando chamar uma pessoa", "como abrir um chamado" ou "dúvidas sobre o sistema X"
+- **Guardrails (regras de segurança):** o que o agente nunca pode fazer e quais dados nunca pode mostrar
 
-Antes de qualquer envio para a IA, senhas e dados pessoais já foram removidos.
+Alguns modelos são **fixos** e valem para qualquer empresa (LGPD, senhas e golpes). Outros são **adaptáveis** e só aparecem se fizerem sentido (uma skill para cada ERP encontrado, migração de sistemas, e-mail...). O que faltar vira pendência; nada é inventado.
+
+**Por que só agora:** o nível 6 da entrevista define os limites do agente. Sem ele, não há regras de segurança.
+
+**O que produz:** `saida/skills/*/SKILL.md` e `saida/guardrails.md`. Tudo é gerado no seu computador, sem enviar nada para a internet.
+
+Detalhes: [Skills](09-skills.md).
 
 ### Etapa 5: Revisar e entregar *(em breve)*
 
@@ -99,6 +104,7 @@ workspaces/restaurante-exemplo/
 ├── changes.json       diário de mudanças entre análises
 ├── generated.json     o que foi gerado e de quais informações depende
 ├── historico/         cópia de cada análise anterior
+├── saida/             skills e regras de segurança do agente
 └── context/
     ├── 01-empresa.md  perfil da empresa (para o assistente)
     └── 10-hosts.md    computadores analisados (para o assistente)

@@ -14,7 +14,7 @@ flowchart LR
 |---|---|---|
 | **A. Descoberta** | Entrevista, coletores (computadores, rede, bancos, e-mail, nuvem), pendências | Entrevista ✅ · computadores ✅ · rede 🔜 · bancos 🔜 |
 | **B. Conhecimento** | Fatos, histórico, comparação entre análises, geração incremental | ✅ base pronta |
-| **C. Skills** | Modelos que geram as skills e as regras do agente: fixos (LGPD...) e adaptáveis | 🔜 próxima |
+| **C. Skills** | Modelos que geram as skills e as regras do agente: fixos (LGPD...) e adaptáveis | ✅ 4 fixos + 5 adaptáveis · 🔜 mais modelos |
 | **D. Entrega** | Servidor MCP gerado, guardrails aplicados, aprovação item a item pelo TI | 🔜 |
 | **E. Experiência** | Modo guiado, atalho de dois cliques, relatório, documentação para leigos | ✅ contínua |
 
@@ -42,7 +42,9 @@ flowchart LR
 
 Detalhes para leigos: [Atualização contínua](08-atualizacao-continua.md).
 
-## C. Skills *(próxima frente)*
+## C. Skills
+
+Documentação para leigos: [Skills](09-skills.md). Implementação: `src/skills/`.
 
 **Pergunta que responde:** *o que o agente deve saber fazer, e dentro de quais limites?*
 

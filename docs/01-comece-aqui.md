@@ -42,17 +42,18 @@ A ferramenta pergunta o nome da empresa e mostra um menu como este:
   … Etapa 1: Conhecer o negócio      (2 de 6 níveis concluídos)
   ○ Etapa 2: Mapear a tecnologia     (0 máquina(s) analisada(s))
   ○ Etapa 3: Resolver pendências     (0 aberta(s), 0 resolvida(s))
-  · Etapa 4: Montar o agente         (Em breve)
+  ○ Etapa 4: Montar o agente         (liberada quando a entrevista estiver completa)
   · Etapa 5: Revisar e entregar      (Em breve)
 
 O que você quer fazer?
   1. Continuar: Analisar este computador  ← recomendado
   2. Entrevista sobre o negócio
   3. Analisar este computador
-  4. Ver e responder pendências
-  5. Abrir o relatório no navegador
-  6. Corrigir respostas da entrevista
-  7. Como funciona?
+  4. Montar o agente (gerar skills)
+  5. Ver e responder pendências
+  6. Abrir o relatório no navegador
+  7. Corrigir respostas da entrevista
+  8. Como funciona?
   0. Sair
 ```
 
@@ -60,7 +61,7 @@ O que você quer fazer?
 
 ### 4. Acompanhe pelo relatório
 
-A opção **5** abre no navegador um relatório que mostra em que etapa você está, o que já se sabe sobre a empresa, o que foi encontrado nos computadores e o que ainda falta responder. Ele é atualizado sozinho a cada passo e pode ser enviado para a diretoria ou para o TI.
+A opção **6** abre no navegador um relatório que mostra em que etapa você está, o que já se sabe sobre a empresa, o que foi encontrado nos computadores e o que ainda falta responder. Ele é atualizado sozinho a cada passo e pode ser enviado para a diretoria ou para o TI.
 
 ## Dicas para a entrevista
 
@@ -82,3 +83,4 @@ Tudo fica **somente neste computador**, na pasta `workspaces/<nome-da-empresa>/`
 5. [Perguntas frequentes](06-perguntas-frequentes.md)
 6. [Glossário](07-glossario.md): MCP, agente, skill, guardrail... em português claro
 7. [Atualização contínua](08-atualizacao-continua.md): como manter tudo em dia quando a empresa muda
+8. [Skills](09-skills.md): o que o agente sabe fazer, e de onde isso vem

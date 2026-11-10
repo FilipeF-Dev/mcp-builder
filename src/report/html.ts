@@ -4,6 +4,7 @@ import { computeStages, STATE_LABEL, type StageState } from "../core/stages.js";
 import { LEVELS } from "../company/levels.js";
 import { answerMap, levelStatus, visibleQuestions } from "../company/progress.js";
 import { categoryLabel, confidenceLabel, topicLabel } from "../core/labels.js";
+import { GUARDRAILS_PATH, loadContext, missingInfo, planSkills, skillsEnabled } from "../skills/index.js";
 
 /**
  * Relatório de acompanhamento em HTML: um único arquivo que abre em qualquer navegador,
@@ -159,6 +160,28 @@ export function renderReport(ws: Workspace): string {
         .join("")}</table>`
     : `<p class="muted">Nada gerado ainda.</p>`;
 
+  // ── Skills ──
+  let skillsHtml: string;
+  if (!skillsEnabled(ws)) {
+    skillsHtml = `<p class="muted">As skills são montadas quando a entrevista estiver completa (o nível 6 define os limites do agente).</p>`;
+  } else {
+    const ctx = loadContext(ws);
+    const plans = planSkills(ctx);
+    const built = ws.loadManifest().artifacts;
+    const row = (p: (typeof plans)[number]) => {
+      const missing = missingInfo(ctx, p).length;
+      const a = built[p.path];
+      return `<tr><td><b>${esc(p.title)}</b><div class="muted small"><code>${esc(p.path)}</code></div></td><td>${esc(p.area)}</td><td class="small">${esc(p.why)}</td><td>${a ? `v${a.version}` : "<i>não gerada</i>"}</td><td>${missing ? `<span class="tag warn">${missing} faltando</span>` : `<span class="tag alta">completa</span>`}</td></tr>`;
+    };
+    const table = (kind: "fixo" | "adaptavel") => {
+      const g = plans.filter((p) => p.kind === kind);
+      return g.length ? `<table><tr><th>Skill</th><th>Área</th><th>Por que existe</th><th>Versão</th><th>Informações</th></tr>${g.map(row).join("")}</table>` : "";
+    };
+    skillsHtml = `<h3>Fixas</h3><p class="muted small">Valem para qualquer empresa (LGPD, senhas, quando chamar uma pessoa, conduta). Só os detalhes da empresa são preenchidos.</p>${table("fixo")}
+      <h3>Adaptadas a esta empresa</h3><p class="muted small">Surgiram do que a entrevista e a análise encontraram.</p>${table("adaptavel") || `<p class="muted">Nenhuma ainda.</p>`}
+      <p class="muted small">Regras de segurança consolidadas: <code>${GUARDRAILS_PATH}</code>. Informações faltando aparecem nas pendências.</p>`;
+  }
+
   const updated = new Date().toLocaleString("pt-BR");
 
   return `<!doctype html>
@@ -212,6 +235,10 @@ ${levelsHtml}
 <h2>Tecnologia encontrada</h2>
 <p class="muted">O que a análise dos computadores encontrou. A análise é somente leitura e senhas são ocultadas automaticamente.</p>
 ${hostsHtml}
+
+<h2>O agente: skills e regras</h2>
+<p class="muted">O que o agente sabe fazer, e por que cada habilidade existe nesta empresa. Cada skill só é refeita quando as informações das quais depende mudam.</p>
+${skillsHtml}
 
 <h2>Pendências</h2>
 <p class="muted">Coisas que a ferramenta não conseguiu entender sozinha. Ela pergunta em vez de supor.</p>

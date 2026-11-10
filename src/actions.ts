@@ -4,11 +4,12 @@
 import { Workspace, nowIso } from "./core/workspace.js";
 import { Prompter } from "./core/prompt.js";
 import { completedUpTo } from "./company/progress.js";
-import { MIN_LEVEL_FOR_TECH_SCAN } from "./company/levels.js";
+import { LEVELS, MIN_LEVEL_FOR_TECH_SCAN } from "./company/levels.js";
 import { collectLocalHost } from "./collectors/host/index.js";
 import { analyzeHost } from "./collectors/host/analyze.js";
 import { compareHosts } from "./core/changes.js";
 import { refreshArtifacts } from "./generation.js";
+import { loadContext, missingInfo, planSkills, skillQuestions, skillsEnabled } from "./skills/index.js";
 import { writeReport } from "./report/html.js";
 import { ui } from "./core/ui.js";
 import { categoryLabel, confidenceLabel, topicLabel } from "./core/labels.js";
@@ -121,5 +122,43 @@ export async function answerQuestions(ws: Workspace): Promise<void> {
     target.answeredAt = nowIso();
     ws.saveQuestions(cur);
   }
+  const r = refreshArtifacts(ws);
+  if (r.regenerated.length) console.log(ui.dim(`
+Atualizado com as respostas: ${r.regenerated.join(", ")}`));
   writeReport(ws);
+}
+
+/** Etapa 4: aplica os modelos de skill e gera skills + guardrails (só o que mudou). */
+export function buildAgentAction(ws: Workspace): boolean {
+  if (!skillsEnabled(ws)) {
+    const done = completedUpTo(ws.loadCompany());
+    console.log(ui.yellow(`\nO agente só pode ser montado com a entrevista completa (concluído até o nível ${done} de ${LEVELS.length}).`));
+    console.log(ui.dim("Motivo: o nível 6 define o que o agente pode e não pode fazer. Sem ele, não há como escrever regras de segurança."));
+    return false;
+  }
+  const ctx = loadContext(ws);
+  const added = ws.addQuestions(skillQuestions(ctx));
+  const refreshed = refreshArtifacts(ws);
+  writeReport(ws);
+
+  const plans = planSkills(loadContext(ws));
+  const ctx2 = loadContext(ws);
+  console.log(ui.green(`\n✓ ${plans.length} skill(s) para o agente da ${ctx.name}:`));
+  for (const kind of ["fixo", "adaptavel"] as const) {
+    const group = plans.filter((p) => p.kind === kind);
+    if (!group.length) continue;
+    console.log(ui.bold(`\n  ${kind === "fixo" ? "Fixas (valem para qualquer empresa)" : "Adaptadas a esta empresa"}:`));
+    for (const p of group) {
+      const missing = missingInfo(ctx2, p).length;
+      const tag = missing ? ui.yellow(`${missing} informação(ões) faltando`) : ui.green("completa");
+      const v = ws.loadManifest().artifacts[p.path]?.version ?? 0;
+      const state = refreshed.regenerated.includes(p.path) ? (v === 1 ? "nova" : `atualizada → v${v}`) : `v${v}, sem alteração`;
+      console.log(`   - ${p.title}  ${ui.dim(`[${state}]`)}  ${tag}`);
+      if (kind === "adaptavel") console.log(ui.dim(`     Por quê: ${p.why}`));
+    }
+  }
+  for (const r of refreshed.removed) console.log(ui.yellow(`  - Removida (não se aplica mais): ${r}`));
+  console.log(`\n  Arquivos em: ${ws.path("saida")}`);
+  if (added) console.log(`  ${added} nova(s) pendência(s): informações que as skills precisam. Ao respondê-las, só as skills afetadas são refeitas.`);
+  return true;
 }

@@ -48,9 +48,11 @@ workspaces/<empresa>/
 
 O `relatorio.html` resume o que se sabe sobre a empresa, incluindo nomes de computadores e sistemas. **Compartilhe só com quem precisa** (diretoria, TI). Ele não contém senhas.
 
-## Envio para a IA (etapa 4, em breve)
+## Envio para uma IA externa
 
-Na etapa "Montar o agente", um resumo do conhecimento coletado será enviado a uma IA para escrever o contexto, as skills e as regras do assistente. Antes do envio:
+**Hoje, nada é enviado.** A montagem das skills (etapa 4) usa modelos prontos e roda inteira no seu computador.
+
+Se no futuro houver uma opção de enriquecer as skills com uma IA externa, ela seguirá estas regras:
 
 - senhas já foram ocultadas na coleta;
 - **dados pessoais** (nomes de colaboradores, CPFs, e-mails) serão removidos ou mascarados;
