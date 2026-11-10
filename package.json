@@ -10,8 +10,10 @@
     "start": "npm run build --silent && node dist/cli.js",
     "build": "tsc",
     "dev": "tsx src/cli.ts",
-    "typecheck": "tsc --noEmit",
-    "docs": "tsx scripts/gerar-docs.ts"
+    "typecheck": "tsc -p tsconfig.check.json",
+    "docs": "tsx scripts/gerar-docs.ts",
+    "test": "node --import tsx --test --test-reporter=spec \"test/**/*.test.ts\"",
+    "verificar": "npm run typecheck && npm test"
   },
   "engines": {
     "node": ">=20"
@@ -24,6 +26,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@types/mssql": "^9.1.11",
     "@types/node": "^22.20.5",
     "@types/pg": "^8.23.1",

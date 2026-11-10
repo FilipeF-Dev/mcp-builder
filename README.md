@@ -1,5 +1,7 @@
 # MCP-Builder
 
+[![Testes](https://github.com/FilipeF-Dev/mcp-builder/actions/workflows/testes.yml/badge.svg)](https://github.com/FilipeF-Dev/mcp-builder/actions/workflows/testes.yml)
+
 **Prepare sua empresa para ter um assistente de IA, sem precisar ser especialista.**
 
 O MCP-Builder entende a sua empresa **do básico ao complexo**: primeiro o negócio, depois a tecnologia. Ele pergunta o que não sabe e entrega ao TI uma base quase pronta para conectar um agente de IA aos sistemas da empresa via [MCP](docs/07-glossario.md).

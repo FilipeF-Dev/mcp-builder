@@ -14,9 +14,28 @@ npm install
 npm run dev              # modo guiado, direto do código-fonte (tsx)
 npm run dev -- status    # qualquer comando avançado
 npm run build            # compila para dist/
-npm run typecheck
+npm run typecheck       # tipos de src/, test/ e scripts/
+npm test                # testes automatizados (~5 s)
+npm run verificar       # typecheck + testes
 npm run docs             # regenera docs/03-a-entrevista.md a partir de levels.ts
 ```
+
+## Testes
+
+Os testes usam o executor nativo do Node (`node:test`), sem framework extra, e rodam a cada envio no GitHub Actions (Windows e Linux, Node 22 e 24).
+
+| Arquivo | O que garante |
+|---|---|
+| `test/seguranca.test.ts` | Mascaramento de segredos na coleta; validação de SQL somente leitura (recusa `DROP`, `UPDATE`, `INTO`, comentários, `pg_sleep`, `xp_cmdshell`...); gerador de SQL do assistente |
+| `test/descoberta.test.ts` | Faixas de rede e limites; reconhecimento de sistemas (inclusive falsos positivos como "touchpad"); fatos estáveis entre versões; comparação entre análises; colunas sensíveis (LGPD); respostas da entrevista |
+| `test/fluxo.test.ts` | O caminho completo: entrevista → skills → só o afetado é refeito → aprovação → servidor só com o aprovado → skill alterada continua na versão aprovada → consulta só entra aprovada e sem credenciais |
+| `test/servidor.test.ts` | O servidor **gerado**, executado de verdade com um cliente MCP oficial: stdio (somente leitura, mascaramento, auditoria, consultas tipadas) e HTTP (recusas de inicialização, 401, 403 contra DNS rebinding, 429, auditoria com quem, chave nunca gravada) |
+
+Os testes criam empresas fictícias em `.tmp-testes/` (ignorada pelo Git). Nada toca a rede da empresa nem bancos reais.
+
+**Ao mudar algo que protege a empresa** (mascaramento, validação de SQL, aprovações, chaves), acrescente um teste que falharia sem a mudança.
+
+Não cobertos automaticamente (precisam de ambiente real): leitura e consultas em **SQL Server**; consultas em PostgreSQL (testadas manualmente com um banco temporário); conexão no Claude Desktop.
 
 ## Estrutura
 
