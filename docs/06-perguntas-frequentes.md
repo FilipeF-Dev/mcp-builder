@@ -37,6 +37,12 @@ Normalmente é falta de internet ou um proxy da empresa bloqueando o acesso. Pe�
 **A análise mostrou avisos ("! services: acesso negado")**
 Algumas informações só podem ser lidas como administrador. No Windows, clique com o botão direito em `Iniciar MCP-Builder.bat` → **Executar como administrador**. A análise funciona mesmo sem isso, só fica menos completa.
 
+**A varredura de rede é segura?**
+Ela só abre conexões comuns, como um navegador faria, e lê o que cada serviço apresenta. Não testa senhas, não explora falhas e tem velocidade limitada. Mesmo assim, sistemas de segurança podem registrar a varredura como "atividade suspeita". Por isso a ferramenta exige autorização e você deve avisar o TI e a segurança antes. Veja [A análise técnica](04-analise-tecnica.md#varredura-de-rede).
+
+**A varredura não encontrou um servidor que eu sei que existe.**
+Ele pode ter um firewall que bloqueia as portas verificadas, ou estar em outra faixa de rede. Peça ao TI a faixa certa, ou rode a análise de computador diretamente nele.
+
 **O antivírus bloqueou a ferramenta.**
 A ferramenta usa comandos padrão do Windows (PowerShell) para ler a configuração, e alguns antivírus estranham isso. Peça ao TI para liberar a pasta do MCP-Builder. Por isso, também, é importante avisar o TI antes (veja [Segurança](05-seguranca-e-privacidade.md)).
 

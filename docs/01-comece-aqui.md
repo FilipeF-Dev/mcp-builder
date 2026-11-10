@@ -15,7 +15,7 @@ Para isso, o assistente precisa conhecer a empresa. O MCP-Builder **coleta e org
 | Um computador com Windows ou Linux | Para rodar a ferramenta |
 | O **Node.js** instalado ([nodejs.org](https://nodejs.org), botão "LTS") | É o "motor" que a ferramenta usa. Instale com as opções padrão |
 | Cerca de **1 hora** para a entrevista | Pode ser dividida em várias sessões: tudo fica salvo |
-| Alguém do TI (interno ou terceirizado) por perto na etapa 2 | Para rodar a análise nos servidores |
+| Alguém do TI (interno ou terceirizado) por perto na etapa 2 | Para indicar as faixas de rede e rodar a análise nos servidores |
 | **Autorização** do responsável pela empresa | A ferramenta só lê informações, mas é ela quem examina os computadores. Veja [Segurança e privacidade](05-seguranca-e-privacidade.md) |
 
 ## Passo a passo
@@ -48,7 +48,7 @@ A ferramenta pergunta o nome da empresa e mostra um menu como este:
 O que você quer fazer?
   1. Continuar: Analisar este computador  ← recomendado
   2. Entrevista sobre o negócio
-  3. Analisar este computador
+  3. Mapear a tecnologia (este computador ou a rede)
   4. Montar o agente (gerar skills)
   5. Revisar e aprovar (servidor MCP)
   6. Ver e responder pendências

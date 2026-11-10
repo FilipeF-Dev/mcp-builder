@@ -50,7 +50,7 @@ Detalhes: [A entrevista](03-a-entrevista.md).
 
 ### Etapa 2: Mapear a tecnologia
 
-**O que acontece:** a ferramenta examina o computador onde está rodando e lista programas, serviços, portas de rede, tarefas automáticas e conexões com bancos de dados. Depois compara tudo com um **catálogo de sistemas conhecidos** (ERPs, bancos de dados, sistemas de backup...).
+**O que acontece:** com autorização do responsável, a ferramenta **varre a rede** para descobrir servidores e serviços (bancos de dados, e-mail, sites internos...). Ela também **examina computadores**: programas, serviços, tarefas automáticas e conexões com bancos de dados. Tudo é comparado com um **catálogo de sistemas conhecidos** (ERPs, bancos de dados, sistemas de backup...). Nada é alterado.
 
 **Por que depois da entrevista:** a ferramenta **cruza** o que encontrou com o que as pessoas disseram. Exemplos reais:
 

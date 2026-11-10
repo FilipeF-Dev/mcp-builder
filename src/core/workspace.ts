@@ -79,7 +79,7 @@ export class Workspace {
     const ts = nowIso();
     const ws = new Workspace(dir);
     ws.saveCompany({ schemaVersion: 1, name, slug, createdAt: ts, updatedAt: ts, answers: {}, deferred: [] });
-    ws.saveInventory({ schemaVersion: 1, updatedAt: ts, hosts: [] });
+    ws.saveInventory({ schemaVersion: 1, updatedAt: ts, hosts: [], network: { scans: [], devices: [] } });
     ws.saveQuestions([]);
     return ws;
   }

@@ -14,6 +14,7 @@ import { nowIso } from "./core/workspace.js";
 import { allFacts, fingerprint } from "./core/facts.js";
 import { writeCompanyContext } from "./company/context.js";
 import { writeHostsContext } from "./collectors/host/context.js";
+import { writeNetworkContext } from "./collectors/network/context.js";
 import { SERVER_DIR, serverEnabled, writeServer } from "./delivery/server.js";
 import { SERVER_REVISION } from "./delivery/tools.js";
 import { GUARDRAILS_PATH, SKILLS_DIR, loadContext, planSkills, skillsEnabled, writeGuardrails, writeSkill } from "./skills/index.js";
@@ -42,6 +43,12 @@ const STATIC_GENERATORS: Generator[] = [
     description: "Computadores analisados e sistemas reconhecidos",
     dependsOn: ["host:"],
     generate: (ws) => void writeHostsContext(ws),
+  },
+  {
+    path: "context/11-rede.md",
+    description: "Equipamentos e serviços encontrados na rede",
+    dependsOn: ["rede:"],
+    generate: (ws) => void writeNetworkContext(ws),
   },
 ];
 

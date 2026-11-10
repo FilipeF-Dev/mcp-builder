@@ -1,17 +1,80 @@
 # A análise técnica
 
-A **etapa 2** examina os computadores da empresa para descobrir quais sistemas existem e como eles se conectam. Ela confirma e completa o que as pessoas contaram na entrevista.
+A **etapa 2** examina a tecnologia da empresa para descobrir quais sistemas existem e como eles se conectam. Ela confirma e completa o que as pessoas contaram na entrevista.
 
-## Em quais computadores rodar
+No menu, **3. Mapear a tecnologia** oferece duas análises que se completam:
 
-A análise examina **o computador onde a ferramenta está aberta**. Para ter uma visão completa, rode em:
+| Análise | O que vê | Quando usar |
+|---|---|---|
+| **Este computador** | Tudo o que está **instalado** na máquina: programas, serviços, tarefas, conexões | Em cada servidor principal e em um computador típico de cada área |
+| **A rede** | O que cada equipamento da rede **oferece**: banco de dados, e-mail, sites internos, impressoras... | Uma vez no começo, para ter o mapa geral, e sempre que algo mudar |
 
-1. **Cada servidor** (o ERP, o banco de dados, o servidor de arquivos...). É lá que estão os sistemas.
+**Ordem sugerida:** primeiro a rede, para descobrir onde estão os servidores; depois a análise de computador nos servidores que importam.
+
+> **Próxima versão:** leitura da estrutura dos bancos de dados encontrados.
+
+## Varredura de rede
+
+### Antes de tudo: autorização
+
+Varrer uma rede sem permissão pode violar regras da empresa e disparar alarmes de segurança. Por isso:
+
+- **Peça autorização** ao responsável pela rede (interno ou empresa terceirizada) e **avise quem cuida da segurança**.
+- A ferramenta só varre faixas **escolhidas explicitamente**. Ela sugere as redes deste computador, mas nunca varre sem você escolher.
+- Para confirmar, é preciso **digitar a palavra `autorizado`**. Responder "sim" não basta.
+- Cada varredura fica registrada: quando, quais faixas, quantos endereços e qual usuário fez.
+- Limite de **4.096 endereços** por varredura, para evitar varreduras enormes por engano.
+
+### Como escolher a faixa
+
+A ferramenta mostra as redes deste computador, por exemplo:
+
+```
+1. 192.168.105.0/24  (rede da placa "Wi-Fi", este computador é 192.168.105.210)
+2. 172.20.160.0/20   (rede da placa "vEthernet (WSL...)"; parece virtual)
+D. Digitar outra (ex.: 192.168.1.0/24, 10.0.0.10-50)
+```
+
+Redes marcadas como **virtuais** normalmente são do próprio computador (WSL, Docker, máquinas virtuais), não da empresa. Se a empresa tem várias redes (matriz, filiais, servidores), peça ao TI a lista de faixas.
+
+| Formato | Exemplo | Significa |
+|---|---|---|
+| CIDR | `192.168.1.0/24` | De 192.168.1.1 a 192.168.1.254 |
+| Intervalo | `192.168.1.10-50` | De 192.168.1.10 a 192.168.1.50 |
+| Um endereço | `192.168.1.20` | Só esse |
+
+### O que a varredura faz
+
+1. **Procura equipamentos:** testa algumas portas comuns em cada endereço. Responder, mesmo recusando, prova que o equipamento existe. A tabela ARP do computador acrescenta equipamentos que bloqueiam tudo.
+2. **Verifica serviços:** nos equipamentos encontrados, testa cerca de 40 portas de serviços conhecidos (SQL Server, PostgreSQL, Firebird, e-mail, web, compartilhamento de arquivos, impressão, acesso remoto...).
+3. **Identifica:** busca o nome do equipamento (DNS) e lê o que cada serviço apresenta, como a primeira linha de um servidor de e-mail ou o título de uma página web. Nenhum login é tentado.
+4. **Classifica** cada equipamento por tipo provável (controlador de domínio, servidor de banco de dados, impressora, computador Windows...) e **reconhece sistemas** pelo mesmo catálogo da análise de computador.
+
+A velocidade é limitada (no máximo 64 conexões ao mesmo tempo), para não pesar na rede. Uma rede `/24` leva de 30 segundos a 2 minutos.
+
+### O que vira pendência
+
+- **Bancos de dados encontrados:** "qual sistema usa esse banco e quem é o responsável?" É por aí que a leitura de bancos (próxima versão) vai começar.
+- **Sites internos não reconhecidos:** "o endereço http://192.168.1.20:8080 é de qual sistema?"
+- **Protocolos sem criptografia** (FTP, Telnet): "ainda são usados? para quê?"
+- **Mudanças entre varreduras:** um sistema que apareceu ou sumiu.
+
+### Limites
+
+- Equipamentos com firewall que bloqueia tudo podem não aparecer (em outras redes, a tabela ARP não ajuda).
+- O **tipo** do equipamento é uma hipótese baseada nas portas abertas, e o relatório deixa isso claro.
+- Só IPv4.
+
+## Análise de computador
+
+### Em quais computadores rodar
+
+A análise examina **o computador onde a ferramenta está aberta**. Rode em:
+
+1. **Cada servidor importante** (o ERP, o banco de dados, o servidor de arquivos...). A varredura de rede mostra quais são.
 2. **Um computador típico de cada área** (financeiro, compras, loja, cozinha...). Mostra o que as pessoas realmente usam.
 
-Copie a pasta do MCP-Builder para cada máquina, ou rode a partir de uma pasta compartilhada. Cada análise é somada à mesma empresa. Se rodar de novo no mesmo computador, a análise anterior é substituída.
-
-> **Próximas versões:** análise da rede (descobrir os servidores sem precisar ir em cada um) e leitura da estrutura dos bancos de dados.
+Copie a pasta do MCP-Builder para cada máquina, ou rode a partir de uma pasta compartilhada. Cada análise é somada à mesma empresa. Se rodar de novo no mesmo computador, a ferramenta compara com a análise anterior e mostra só o que mudou.
 
 ## O que é lido
 

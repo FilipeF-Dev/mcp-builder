@@ -153,10 +153,59 @@ export const HostSchema = z.object({
 });
 export type Host = z.infer<typeof HostSchema>;
 
+// ───────────────────────── Rede ─────────────────────────
+
+export const NetServiceSchema = z.object({
+  port: z.number(),
+  /** Nome do serviço pelo catálogo de portas (ex.: "SQL Server"). */
+  name: z.string(),
+  category: z.string(),
+  /** Primeira linha que o serviço apresenta, ou cabeçalho "Server" / título HTTP. Já mascarado. */
+  banner: z.string().optional(),
+});
+export type NetService = z.infer<typeof NetServiceSchema>;
+
+export const NetDeviceSchema = z.object({
+  ip: z.string(),
+  hostname: z.string().optional(),
+  mac: z.string().optional(),
+  /** Tipo provável, deduzido das portas (ex.: "impressora", "servidor de banco de dados"). */
+  kind: z.string(),
+  services: z.array(NetServiceSchema),
+  systems: z.array(SystemMatchSchema),
+  /** Máquina já analisada localmente com o mesmo IP. */
+  hostId: z.string().optional(),
+  firstSeen: z.string(),
+  lastSeen: z.string(),
+});
+export type NetDevice = z.infer<typeof NetDeviceSchema>;
+
+/** Registro de cada varredura: o que foi varrido, por quem, com qual autorização. */
+export const NetScanSchema = z.object({
+  at: z.string(),
+  ranges: z.array(z.string()),
+  addresses: z.number(),
+  ports: z.array(z.number()),
+  by: z.string(),
+  /** A pessoa confirmou ter autorização do responsável pela rede. */
+  authorized: z.literal(true),
+  durationMs: z.number(),
+  devicesFound: z.number(),
+});
+export type NetScan = z.infer<typeof NetScanSchema>;
+
+export const NetworkSchema = z.object({
+  scans: z.array(NetScanSchema),
+  devices: z.array(NetDeviceSchema),
+});
+export type Network = z.infer<typeof NetworkSchema>;
+
 export const InventorySchema = z.object({
   schemaVersion: z.literal(1),
   updatedAt: z.string(),
   hosts: z.array(HostSchema),
+  /** Opcional para manter compatibilidade com inventários criados antes do coletor de rede. */
+  network: NetworkSchema.default({ scans: [], devices: [] }),
 });
 export type Inventory = z.infer<typeof InventorySchema>;
 

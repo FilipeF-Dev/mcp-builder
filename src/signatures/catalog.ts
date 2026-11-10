@@ -37,6 +37,8 @@ export interface Signature {
   ports?: number[];
   /** Regex contra DSNs ODBC e tarefas agendadas. */
   config?: RegExp;
+  /** Regex contra o que um serviço de rede apresenta (banner, cabeçalho Server, título da página). */
+  banner?: RegExp;
   /** Nome genérico que gera falso positivo com facilidade: reduz a confiança. */
   ambiguous?: boolean;
   notes?: string;
@@ -45,7 +47,7 @@ export interface Signature {
 export const SIGNATURES: Signature[] = [
   // ── Sistemas de negócio (Brasil) ──
   {
-    id: "teknisa",
+    id: "teknisa", banner: /teknisa/i,
     name: "Teknisa",
     category: "erp",
     business: true,
@@ -56,7 +58,7 @@ export const SIGNATURES: Signature[] = [
     notes: "ERP/gestão para food service e varejo.",
   },
   {
-    id: "touch",
+    id: "touch", banner: /touchs*(comp|erp|sistemas?)/i,
     name: "Touch",
     category: "erp",
     business: true,
@@ -68,7 +70,7 @@ export const SIGNATURES: Signature[] = [
     notes: "Sistema de gestão. Padrão genérico: precisa de confirmação.",
   },
   {
-    id: "totvs-protheus",
+    id: "totvs-protheus", banner: /totvs|protheus/i,
     name: "TOTVS Protheus",
     category: "erp",
     business: true,
@@ -79,11 +81,11 @@ export const SIGNATURES: Signature[] = [
   },
   { id: "totvs-rm", name: "TOTVS RM", category: "erp", business: true, software: /totvs\s*rm|corpore/i, service: /rm\.host|totvs.*rm/i },
   { id: "sap-b1", name: "SAP Business One", category: "erp", business: true, software: /sap business one/i, service: /sap business one|b1/i, ports: [30015, 40000] },
-  { id: "senior", name: "Senior Sistemas", category: "erp", business: true, software: /senior sistemas|\bsapiens\b|vetorh/i, service: /senior/i },
-  { id: "linx", name: "Linx", category: "pdv", business: true, software: /\blinx\b/i, service: /\blinx\b/i },
-  { id: "sankhya", name: "Sankhya", category: "erp", business: true, software: /sankhya/i, service: /sankhya/i },
+  { id: "senior", banner: /senior sistemas|sapiens/i, name: "Senior Sistemas", category: "erp", business: true, software: /senior sistemas|\bsapiens\b|vetorh/i, service: /senior/i },
+  { id: "linx", banner: /linx/i, name: "Linx", category: "pdv", business: true, software: /\blinx\b/i, service: /\blinx\b/i },
+  { id: "sankhya", banner: /sankhya/i, name: "Sankhya", category: "erp", business: true, software: /sankhya/i, service: /sankhya/i },
   { id: "dominio", name: "Domínio Sistemas (Thomson Reuters)", category: "negocio", business: true, software: /dom[ií]nio sistemas|contabil.*dom[ií]nio/i },
-  { id: "glpi", name: "GLPI (chamados)", category: "negocio", business: true, software: /glpi/i, service: /glpi/i },
+  { id: "glpi", banner: /glpi/i, name: "GLPI (chamados)", category: "negocio", business: true, software: /glpi/i, service: /glpi/i },
 
   // ── Bancos de dados ──
   {
@@ -97,7 +99,7 @@ export const SIGNATURES: Signature[] = [
     ports: [1433, 1434],
   },
   { id: "postgres", name: "PostgreSQL", category: "banco-de-dados", business: false, software: /postgresql/i, service: /postgres/i, process: /^postgres/i, ports: [5432] },
-  { id: "mysql", name: "MySQL / MariaDB", category: "banco-de-dados", business: false, software: /mysql server|mariadb/i, service: /^mysql|mariadb/i, process: /^mysqld|^mariadbd/i, ports: [3306] },
+  { id: "mysql", banner: /mysql|mariadb/i, name: "MySQL / MariaDB", category: "banco-de-dados", business: false, software: /mysql server|mariadb/i, service: /^mysql|mariadb/i, process: /^mysqld|^mariadbd/i, ports: [3306] },
   { id: "oracle", name: "Oracle Database", category: "banco-de-dados", business: false, service: /^OracleService|oracle.*tnslistener/i, process: /^oracle$|^tnslsnr$/i, ports: [1521] },
   {
     id: "firebird",
@@ -114,19 +116,19 @@ export const SIGNATURES: Signature[] = [
   { id: "redis", name: "Redis", category: "banco-de-dados", business: false, service: /redis/i, process: /^redis-server/i, ports: [6379] },
 
   // ── Servidores web / integração ──
-  { id: "iis", name: "IIS", category: "servidor-web", business: false, service: /^W3SVC$/i },
-  { id: "apache", name: "Apache HTTP", category: "servidor-web", business: false, service: /^apache2?$|^httpd$/i, process: /^httpd$|^apache2$/i },
-  { id: "nginx", name: "nginx", category: "servidor-web", business: false, service: /nginx/i, process: /^nginx$/i },
-  { id: "tomcat", name: "Apache Tomcat", category: "servidor-web", business: false, software: /tomcat/i, service: /tomcat/i },
-  { id: "rabbitmq", name: "RabbitMQ", category: "integracao", business: false, service: /rabbitmq/i, ports: [5672, 15672] },
+  { id: "iis", banner: /Microsoft-IIS/i, name: "IIS", category: "servidor-web", business: false, service: /^W3SVC$/i },
+  { id: "apache", banner: /Apache(?!.*Tomcat)/i, name: "Apache HTTP", category: "servidor-web", business: false, service: /^apache2?$|^httpd$/i, process: /^httpd$|^apache2$/i },
+  { id: "nginx", banner: /nginx/i, name: "nginx", category: "servidor-web", business: false, service: /nginx/i, process: /^nginx$/i },
+  { id: "tomcat", banner: /Tomcat|Apache-Coyote/i, name: "Apache Tomcat", category: "servidor-web", business: false, software: /tomcat/i, service: /tomcat/i },
+  { id: "rabbitmq", banner: /RabbitMQ/i, name: "RabbitMQ", category: "integracao", business: false, service: /rabbitmq/i, ports: [5672, 15672] },
 
   // ── E-mail ──
-  { id: "exchange", name: "Microsoft Exchange Server", category: "email", business: false, software: /microsoft exchange server/i, service: /^MSExchange(IS|Transport|FrontEndTransport)$/i, ports: [25, 587, 993] },
-  { id: "hmailserver", name: "hMailServer", category: "email", business: false, software: /hmailserver/i, service: /hmailserver/i, process: /^hmailserver$/i, ports: [25, 110, 143] },
-  { id: "mdaemon", name: "MDaemon", category: "email", business: false, software: /mdaemon/i, service: /mdaemon/i, ports: [25, 110, 143] },
-  { id: "zimbra", name: "Zimbra", category: "email", business: false, service: /zimbra/i, software: /^zimbra/i, ports: [25, 7071] },
-  { id: "postfix", name: "Postfix", category: "email", business: false, software: /^postfix$/i, service: /^postfix/i, ports: [25, 587] },
-  { id: "dovecot", name: "Dovecot", category: "email", business: false, software: /^dovecot/i, service: /^dovecot/i, process: /^dovecot$/i, ports: [110, 143, 993] },
+  { id: "exchange", banner: /Microsoft ESMTP|Exchange|Outlook Web App|OWA/i, name: "Microsoft Exchange Server", category: "email", business: false, software: /microsoft exchange server/i, service: /^MSExchange(IS|Transport|FrontEndTransport)$/i, ports: [25, 587, 993] },
+  { id: "hmailserver", banner: /hMailServer/i, name: "hMailServer", category: "email", business: false, software: /hmailserver/i, service: /hmailserver/i, process: /^hmailserver$/i, ports: [25, 110, 143] },
+  { id: "mdaemon", banner: /MDaemon/i, name: "MDaemon", category: "email", business: false, software: /mdaemon/i, service: /mdaemon/i, ports: [25, 110, 143] },
+  { id: "zimbra", banner: /Zimbra/i, name: "Zimbra", category: "email", business: false, service: /zimbra/i, software: /^zimbra/i, ports: [25, 7071] },
+  { id: "postfix", banner: /Postfix/i, name: "Postfix", category: "email", business: false, software: /^postfix$/i, service: /^postfix/i, ports: [25, 587] },
+  { id: "dovecot", banner: /Dovecot/i, name: "Dovecot", category: "email", business: false, software: /^dovecot/i, service: /^dovecot/i, process: /^dovecot$/i, ports: [110, 143, 993] },
 
   // ── Diretório ──
   { id: "ad-ds", name: "Active Directory (controlador de domínio)", category: "diretorio", business: false, service: /^NTDS$/i, ports: [389, 636, 88] },
@@ -135,7 +137,7 @@ export const SIGNATURES: Signature[] = [
   // ── Acesso remoto (relevante para segurança) ──
   { id: "anydesk", name: "AnyDesk", category: "acesso-remoto", business: false, software: /anydesk/i, service: /anydesk/i },
   { id: "teamviewer", name: "TeamViewer", category: "acesso-remoto", business: false, software: /teamviewer/i, service: /teamviewer/i },
-  { id: "vnc", name: "VNC", category: "acesso-remoto", business: false, software: /vnc/i, service: /vnc/i, ports: [5900] },
+  { id: "vnc", banner: /^RFB d/, name: "VNC", category: "acesso-remoto", business: false, software: /vnc/i, service: /vnc/i, ports: [5900] },
 
   // ── Backup ──
   { id: "veeam", name: "Veeam Backup", category: "backup", business: false, software: /veeam/i, service: /veeam/i },

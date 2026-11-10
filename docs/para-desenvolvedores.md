@@ -41,6 +41,13 @@ src/
 │   ├── progress.ts         status por nível
 │   ├── interview.ts        entrevista interativa e importação de respostas
 │   └── context.ts          gera context/01-empresa.md
+├── collectors/network/
+│   ├── ranges.ts           faixas (CIDR, intervalos), limite de 4096, sub-redes locais
+│   ├── ports.ts            catálogo de ~40 portas e como sondar cada uma
+│   ├── probe.ts            conexão TCP, banner, GET HTTP(S), DNS reverso, ARP, pool com limite
+│   ├── index.ts            as 4 fases da varredura, classificação e assinaturas por banner
+│   ├── analyze.ts          mudanças entre varreduras e pendências
+│   └── context.ts          gera context/11-rede.md
 ├── collectors/host/
 │   ├── windows.ts          script PowerShell somente leitura
 │   ├── linux.ts            coletor Linux
@@ -194,5 +201,5 @@ Edite `src/company/levels.ts`. Use um `id` estável (ele é a chave em `company.
 - [ ] Mais modelos (impressoras, VPN, RH/holerite, PDV...) e enriquecimento opcional por LLM
 - [x] Etapa 5: aprovação por versão e servidor MCP com proteções (mascaramento, auditoria, só o aprovado)
 - [ ] Ferramentas de consulta direta a sistemas (somente leitura, allow-list aprovada) e transporte HTTP
-- [ ] Coletor de rede (somente faixas autorizadas)
+- [x] Coletor de rede: faixas autorizadas (digitar "autorizado"), TCP connect com limite, banners/HTTP, DNS reverso, ARP, diff entre varreduras
 - [ ] Coletor de bancos de dados (estrutura, somente leitura)

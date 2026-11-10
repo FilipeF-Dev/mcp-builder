@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { confidenceLabel } from "./labels.js";
-import type { Approvals, CompanyProfile, Host, Inventory, Question } from "./schema.js";
+import type { Approvals, CompanyProfile, Host, Inventory, NetDevice, Question } from "./schema.js";
 
 /**
  * FATOS: tudo o que se sabe sobre a empresa, achatado em pares chave → valor legível.
@@ -67,6 +67,23 @@ export function hostFacts(h: Host): Facts {
   return f;
 }
 
+/**
+ * Fatos da rede, por equipamento (chave = IP):
+ *   rede:192.168.1.10:tipo              → "servidor de banco de dados (SRV-DB)"
+ *   rede:192.168.1.10:porta:tcp/1433    → "SQL Server"
+ *   rede:192.168.1.10:sistema:sqlserver → "Microsoft SQL Server"
+ */
+export function networkFacts(devices: NetDevice[]): Facts {
+  const f: Facts = {};
+  for (const d of devices) {
+    const p = `rede:${d.ip}`;
+    f[`${p}:tipo`] = `${d.kind}${d.hostname ? ` (${d.hostname})` : ""}`;
+    for (const s of d.services) f[`${p}:porta:tcp/${s.port}`] = s.name;
+    for (const s of d.systems) f[`${p}:sistema:${s.signatureId}`] = s.systemName;
+  }
+  return f;
+}
+
 /** Pergunta feita por um modelo de skill (tópico "skill:<skill>:<chave>"): a resposta vira fato estável. */
 export const SKILL_TOPIC = "skill:";
 
@@ -90,10 +107,14 @@ export function questionFacts(qs: Question[]): Facts {
 export function systemFacts(inv: Inventory): Facts {
   const bySig = new Map<string, { name: string; hosts: string[] }>();
   const byCat = new Map<string, Set<string>>();
-  for (const h of inv.hosts) {
+  const sources = [
+    ...inv.hosts.map((h) => ({ label: h.hostname, systems: h.systems })),
+    ...(inv.network?.devices ?? []).map((d) => ({ label: d.hostname ?? d.ip, systems: d.systems })),
+  ];
+  for (const h of sources) {
     for (const s of h.systems) {
       const cur = bySig.get(s.signatureId) ?? { name: s.systemName, hosts: [] };
-      cur.hosts.push(h.hostname);
+      if (!cur.hosts.includes(h.label)) cur.hosts.push(h.label);
       bySig.set(s.signatureId, cur);
       byCat.set(s.category, (byCat.get(s.category) ?? new Set()).add(s.systemName));
     }
@@ -112,7 +133,7 @@ export function approvalFacts(a?: Approvals): Facts {
 }
 
 export function allFacts(company: CompanyProfile, inv: Inventory, qs: Question[], approvals?: Approvals): Facts {
-  return Object.assign({}, companyFacts(company), ...inv.hosts.map(hostFacts), systemFacts(inv), questionFacts(qs), approvalFacts(approvals));
+  return Object.assign({}, companyFacts(company), ...inv.hosts.map(hostFacts), networkFacts(inv.network?.devices ?? []), systemFacts(inv), questionFacts(qs), approvalFacts(approvals));
 }
 
 /** Impressão digital dos fatos que começam com algum dos prefixos. */

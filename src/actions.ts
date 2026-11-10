@@ -2,6 +2,10 @@
  * Ações de alto nível, compartilhadas pelo menu guiado e pelos comandos avançados.
  */
 import { readFileSync } from "node:fs";
+import { userInfo } from "node:os";
+import { scanNetwork } from "./collectors/network/index.js";
+import { analyzeNetwork, compareNetwork } from "./collectors/network/analyze.js";
+import { expandAll } from "./collectors/network/ranges.js";
 import { join } from "node:path";
 import { Workspace, nowIso } from "./core/workspace.js";
 import { decide, reviewItems, reviewSummary } from "./delivery/approvals.js";
@@ -228,5 +232,87 @@ export async function reviewAction(ws: Workspace): Promise<boolean> {
   } else {
     console.log(ui.dim("\nO servidor MCP é montado quando ao menos uma ferramenta for aprovada."));
   }
+  return true;
+}
+
+export interface NetworkScanRequest {
+  ranges: string[];
+  extraPorts?: number[];
+  /**
+   * Confirmação de que o responsável pela rede autorizou a varredura destas faixas.
+   * Sem ela, nada é varrido: não existe padrão "sim".
+   */
+  authorized: boolean;
+}
+
+/** Etapa 2 (rede): varre SOMENTE as faixas autorizadas e registra quem varreu, quando e o quê. */
+export async function scanNetworkAction(ws: Workspace, req: NetworkScanRequest): Promise<boolean> {
+  const done = completedUpTo(ws.loadCompany());
+  if (done < MIN_LEVEL_FOR_TECH_SCAN) {
+    console.log(ui.yellow(`\nA varredura de rede é liberada depois dos níveis 1 a ${MIN_LEVEL_FOR_TECH_SCAN} da entrevista.`));
+    return false;
+  }
+  if (!req.authorized) {
+    console.log(ui.yellow("\nVarredura cancelada: é preciso confirmar a autorização do responsável pela rede."));
+    return false;
+  }
+  const ips = expandAll(req.ranges);
+  const scope = new Set(ips);
+  console.log(`\nVarrendo ${ips.length} endereço(s) em ${req.ranges.join(", ")}. Somente leitura, velocidade limitada.`);
+
+  let lastPct = -1;
+  const result = await scanNetwork(req.ranges, {
+    extraPorts: req.extraPorts,
+    onProgress: (phase, d, total) => {
+      const pct = Math.floor((d / Math.max(total, 1)) * 100);
+      if (process.stdout.isTTY) process.stdout.write(`\r  ${phase}: ${pct}%   `);
+      else if (pct % 25 === 0 && pct !== lastPct) console.log(`  ${phase}: ${pct}%`);
+      lastPct = pct;
+      if (process.stdout.isTTY && d === total) process.stdout.write("\n");
+    },
+  });
+
+  // Liga equipamentos a máquinas já analisadas localmente (mesmo IP).
+  const inv = ws.loadInventory();
+  for (const d of result.devices) {
+    const h = inv.hosts.find((x) => x.interfaces.some((i) => i.ipv4.includes(d.ip)));
+    if (h) d.hostId = h.id;
+  }
+
+  // Mudanças só dentro das faixas varridas; equipamentos de outras faixas ficam como estavam.
+  const prev = inv.network.devices;
+  const hadScan = prev.some((d) => scope.has(d.ip));
+  const comparison = compareNetwork(prev, result.devices, scope);
+  if (hadScan) ws.appendChanges(comparison.changes);
+  for (const d of result.devices) {
+    const old = prev.find((p) => p.ip === d.ip);
+    if (old) d.firstSeen = old.firstSeen;
+  }
+  inv.network.devices = [...prev.filter((d) => !scope.has(d.ip)), ...result.devices];
+  inv.network.scans.push({
+    at: nowIso(),
+    ranges: req.ranges,
+    addresses: result.addresses,
+    ports: result.ports,
+    by: userInfo().username,
+    authorized: true,
+    durationMs: result.durationMs,
+    devicesFound: result.devices.length,
+  });
+  ws.saveInventory(inv);
+
+  const added = ws.addQuestions([...(hadScan ? comparison.questions : []), ...analyzeNetwork(result.devices, ws.loadCompany())]);
+  const refreshed = refreshArtifacts(ws);
+  writeReport(ws);
+
+  console.log(ui.green(`\n✓ ${result.devices.length} equipamento(s) encontrado(s) em ${Math.round(result.durationMs / 1000)}s`));
+  const kinds = new Map<string, number>();
+  for (const d of result.devices) kinds.set(d.kind, (kinds.get(d.kind) ?? 0) + 1);
+  for (const [k, n] of [...kinds].sort((a, b) => b[1] - a[1])) console.log(`  ${String(n).padStart(3)} × ${k}`);
+  const systems = [...new Set(result.devices.flatMap((d) => d.systems.map((s) => s.systemName)))];
+  if (systems.length) console.log(ui.bold(`\n  Sistemas reconhecidos: `) + systems.join(", "));
+  if (hadScan) printComparison(prev.filter((d) => scope.has(d.ip)).map((d) => d.lastSeen).sort().at(-1) ?? nowIso(), comparison.changes);
+  console.log(`\n  ${added} nova(s) pendência(s) para confirmar com pessoas.`);
+  if (refreshed.regenerated.length) console.log(ui.dim(`  Atualizado: ${refreshed.regenerated.join(", ")}`));
   return true;
 }

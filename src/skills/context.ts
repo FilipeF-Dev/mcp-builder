@@ -52,11 +52,16 @@ export class SkillContext {
   /** Sistemas encontrados na análise técnica, agrupados (uma entrada por sistema). */
   systems(category?: string): FoundSystem[] {
     const map = new Map<string, FoundSystem>();
-    for (const h of this.inv.hosts) {
+    // Máquinas analisadas localmente e equipamentos encontrados na varredura de rede.
+    const sources = [
+      ...this.inv.hosts.map((h) => ({ label: h.hostname, systems: h.systems })),
+      ...(this.inv.network?.devices ?? []).map((d) => ({ label: d.hostname ?? d.ip, systems: d.systems })),
+    ];
+    for (const h of sources) {
       for (const s of h.systems) {
         if (category && s.category !== category) continue;
         const cur = map.get(s.signatureId) ?? { signatureId: s.signatureId, name: s.systemName, category: s.category, hosts: [] };
-        cur.hosts.push(h.hostname);
+        if (!cur.hosts.includes(h.label)) cur.hosts.push(h.label);
         map.set(s.signatureId, cur);
       }
     }

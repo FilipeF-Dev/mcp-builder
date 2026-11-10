@@ -12,7 +12,7 @@ import { ui } from "./core/ui.js";
 import { computeStages, STATE_LABEL } from "./core/stages.js";
 import { runInterview, importAnswers, printLevelSummary } from "./company/interview.js";
 import { MIN_LEVEL_FOR_TECH_SCAN } from "./company/levels.js";
-import { scanHostAction, listQuestions, answerQuestions, buildAgentAction, reviewAction } from "./actions.js";
+import { scanHostAction, scanNetworkAction, listQuestions, answerQuestions, buildAgentAction, reviewAction } from "./actions.js";
 import { writeReport } from "./report/html.js";
 import { guided, openFile } from "./guided.js";
 
@@ -63,6 +63,23 @@ scan
   .option("-f, --forcar", `ignorar a exigência de concluir os níveis 1–${MIN_LEVEL_FOR_TECH_SCAN} da entrevista`)
   .action(async (opts: { forcar?: boolean }) => {
     const ok = await scanHostAction(ws(), opts.forcar);
+    if (!ok) process.exitCode = 1;
+  });
+
+scan
+  .command("rede")
+  .description("varre faixas de rede AUTORIZADAS em busca de equipamentos e serviços (somente leitura)")
+  .requiredOption("--faixa <faixas...>", "faixas a varrer: 192.168.1.0/24, 192.168.1.10-50 ou um IP")
+  .option("--portas <lista>", "portas extras, separadas por vírgula (ex.: 8085,9000)")
+  .option("--autorizado", "confirma que o responsável pela rede autorizou esta varredura (obrigatório)")
+  .action(async (opts: { faixa: string[]; portas?: string; autorizado?: boolean }) => {
+    if (!opts.autorizado) {
+      console.log(ui.yellow("Por segurança, informe --autorizado para confirmar que o responsável pela rede autorizou a varredura destas faixas."));
+      process.exitCode = 1;
+      return;
+    }
+    const extraPorts = opts.portas?.split(",").map((p) => Number(p.trim())).filter((p) => Number.isInteger(p) && p > 0 && p < 65536);
+    const ok = await scanNetworkAction(ws(), { ranges: opts.faixa, extraPorts, authorized: true });
     if (!ok) process.exitCode = 1;
   });
 

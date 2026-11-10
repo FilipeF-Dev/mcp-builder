@@ -13,7 +13,7 @@ A análise técnica examina computadores e servidores da empresa. Mesmo sendo so
 
 1. **Peça autorização por escrito** ao responsável pela empresa e ao responsável pela infraestrutura (interno ou terceirizado).
 2. **Avise o TI ou o prestador de segurança.** Alguns antivírus e sistemas de monitoramento podem estranhar uma ferramenta listando serviços e portas.
-3. Nas próximas versões, a análise de **rede** só vai rodar em faixas de endereços informadas explicitamente. Nunca será "escanear tudo".
+3. A varredura de **rede** só roda em faixas escolhidas explicitamente, exige digitar `autorizado` e fica registrada (quando, faixas, usuário). Detalhes em [A análise técnica](04-analise-tecnica.md#varredura-de-rede).
 
 ## O que a ferramenta lê
 

@@ -107,6 +107,20 @@ export function renderReport(ws: Workspace): string {
         .join("")
     : `<p class="muted">Nenhuma máquina analisada ainda.</p>`;
 
+  // ── Rede ──
+  const net = inv.network;
+  const lastScan = net.scans.at(-1);
+  const deviceRow = (d: (typeof net.devices)[number]) => {
+    const services = d.services.map((x) => `${x.port} ${esc(x.name)}${x.banner ? `<div class="muted">${esc(x.banner)}</div>` : ""}`).join("<br>");
+    const systems = d.systems.map((x) => `${esc(x.systemName)} <span class="tag ${x.confidence}">${esc(confidenceLabel(x.confidence))}</span>`).join("<br>");
+    return `<tr><td><b>${esc(d.ip)}</b>${d.hostname ? `<div class="muted small">${esc(d.hostname)}</div>` : ""}</td><td class="small">${esc(d.kind)}</td><td class="small">${services || "—"}</td><td class="small">${systems || "—"}</td></tr>`;
+  };
+  const networkHtml =
+    net.devices.length && lastScan
+      ? `<p class="muted small">Última varredura: ${esc(new Date(lastScan.at).toLocaleString("pt-BR"))} · faixas ${esc(lastScan.ranges.join(", "))} · autorizada e feita por ${esc(lastScan.by)}. O tipo de cada equipamento é uma hipótese baseada nas portas abertas.</p>
+      <table><tr><th>Endereço</th><th>Tipo provável</th><th>Serviços</th><th>Sistemas reconhecidos</th></tr>${net.devices.map(deviceRow).join("")}</table>`
+      : `<p class="muted">Nenhuma varredura de rede feita ainda. No menu: Mapear a tecnologia → Varrer a rede (exige autorização do responsável pela rede).</p>`;
+
   // ── Pendências ──
   const groups = new Map<string, typeof open>();
   for (const q of open) groups.set(q.topic, [...(groups.get(q.topic) ?? []), q]);
@@ -254,8 +268,12 @@ Ele funciona em etapas, <b>do básico ao complexo</b>: primeiro entende o negóc
 ${levelsHtml}
 
 <h2>Tecnologia encontrada</h2>
-<p class="muted">O que a análise dos computadores encontrou. A análise é somente leitura e senhas são ocultadas automaticamente.</p>
+<p class="muted">O que a análise dos computadores e da rede encontrou. Tudo é somente leitura, e senhas são ocultadas automaticamente.</p>
+<h3>Computadores analisados</h3>
 ${hostsHtml}
+
+<h3>Rede</h3>
+${networkHtml}
 
 <h2>O agente: skills e regras</h2>
 <p class="muted">O que o agente sabe fazer, e por que cada habilidade existe nesta empresa. Cada skill só é refeita quando as informações das quais depende mudam.</p>

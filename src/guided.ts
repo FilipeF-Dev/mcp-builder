@@ -13,7 +13,8 @@ import { computeStages, STATE_LABEL, type StageState } from "./core/stages.js";
 import { runInterview } from "./company/interview.js";
 import { completedUpTo } from "./company/progress.js";
 import { LEVELS, MIN_LEVEL_FOR_TECH_SCAN } from "./company/levels.js";
-import { scanHostAction, listQuestions, answerQuestions, buildAgentAction, reviewAction } from "./actions.js";
+import { scanHostAction, scanNetworkAction, listQuestions, answerQuestions, buildAgentAction, reviewAction } from "./actions.js";
+import { expandAll, localSubnets } from "./collectors/network/ranges.js";
 import { reviewItems } from "./delivery/approvals.js";
 import { SKILLS_DIR } from "./skills/index.js";
 import { writeReport } from "./report/html.js";
@@ -149,6 +150,17 @@ async function run(ws: Workspace, action: Action, p: Prompter): Promise<void> {
         console.log(`Escolha ${ui.bold("1. Continuar")} para seguir com a entrevista.`);
         return;
       }
+      const analyzedHere = ws.loadInventory().hosts.some((h) => h.id === slugify(hostname()));
+      const scans = ws.loadInventory().network.scans.length;
+      console.log(ui.bold("\nMapear a tecnologia"));
+      console.log(`  ${ui.cyan("1")}. ${analyzedHere ? "Atualizar a análise deste computador" : "Analisar este computador"}`);
+      console.log(`  ${ui.cyan("2")}. ${scans ? "Varrer a rede de novo (mostra só o que mudou)" : "Varrer a rede da empresa"}`);
+      const which = (await p.ask("Qual? (Enter = voltar) > "))?.trim();
+      if (which === "2") {
+        await networkFlow(ws, p);
+        return;
+      }
+      if (which !== "1") return;
       console.log(ui.bold("\nAnalisar este computador"));
       console.log("A ferramenta vai LER (sem alterar nada): sistema operacional, programas instalados,");
       console.log("serviços, portas de rede abertas, tarefas agendadas e conexões com bancos de dados.");
@@ -184,6 +196,67 @@ async function run(ws: Workspace, action: Action, p: Prompter): Promise<void> {
   }
 }
 
+/** Varredura de rede guiada: escolha da faixa, estimativa e autorização digitada por extenso. */
+async function networkFlow(ws: Workspace, p: Prompter): Promise<void> {
+  console.log(ui.bold("\nVarrer a rede"));
+  console.log("A ferramenta vai testar, em cada endereço da faixa escolhida, se existem serviços conhecidos");
+  console.log("(banco de dados, e-mail, sites internos, compartilhamento de arquivos, impressoras...).");
+  console.log(ui.dim("Somente leitura e com velocidade limitada: nenhuma senha é testada, nada é alterado."));
+  console.log(ui.yellow("\nImportante: varrer uma rede exige autorização do responsável por ela. Avise também quem"));
+  console.log(ui.yellow("cuida da segurança: ferramentas de monitoramento podem registrar a varredura."));
+
+  const last = ws.loadInventory().network.scans.at(-1);
+  const subnets = localSubnets().sort((a, b) => Number(a.virtual) - Number(b.virtual));
+  const options: Array<{ label: string; ranges: string[] }> = [];
+  if (last) options.push({ label: `Repetir a última varredura: ${last.ranges.join(", ")}`, ranges: last.ranges });
+  for (const s of subnets) {
+    options.push({
+      label: `${s.cidr}  ${ui.dim(`(rede da placa "${s.interfaceName}", este computador é ${s.address}${s.virtual ? "; parece virtual" : ""})`)}`,
+      ranges: [s.cidr],
+    });
+  }
+  console.log(ui.bold("\nQual faixa?"));
+  options.forEach((o, i) => console.log(`  ${ui.cyan(String(i + 1))}. ${o.label}`));
+  console.log(`  ${ui.cyan("D")}. Digitar outra (ex.: 192.168.1.0/24, 10.0.0.10-50)`);
+
+  let ranges: string[] | undefined;
+  for (;;) {
+    const raw = (await p.ask("> "))?.trim();
+    if (!raw) return;
+    if (raw.toLowerCase() === "d") {
+      const typed = (await p.ask("Faixas (separe por vírgula): "))?.trim();
+      if (!typed) return;
+      ranges = typed.split(/[,;\s]+/).filter(Boolean);
+    } else {
+      ranges = options[Number(raw) - 1]?.ranges;
+    }
+    if (!ranges) continue;
+    try {
+      const n = expandAll(ranges).length;
+      const est = Math.max(10, Math.round((n * 8 * 0.8) / 64 + 20));
+      console.log(`\n${n} endereço(s). Tempo estimado: até ${est < 90 ? `${est} segundos` : `${Math.round(est / 60)} minutos`}.`);
+      break;
+    } catch (e) {
+      console.log(ui.yellow((e as Error).message));
+      ranges = undefined;
+    }
+  }
+
+  const answer = (await p.ask(`Você tem AUTORIZAÇÃO do responsável pela rede para varrer ${ranges.join(", ")}? Digite ${ui.bold("autorizado")} para confirmar: `))
+    ?.trim()
+    .toLowerCase();
+  const authorized = answer === "autorizado";
+  if (!authorized) {
+    console.log(ui.dim("Varredura cancelada. Nada foi feito."));
+    return;
+  }
+  try {
+    await scanNetworkAction(ws, { ranges, authorized });
+  } catch (e) {
+    console.log(ui.red(`\nNão foi possível varrer a rede: ${(e as Error).message}`));
+  }
+}
+
 export async function guided(): Promise<void> {
   const p = Prompter.shared();
   const ws = await chooseWorkspace(p);
@@ -195,8 +268,7 @@ export async function guided(): Promise<void> {
     console.log(ui.bold("\nO que você quer fazer?"));
     console.log(`  ${ui.cyan("1")}. ${ui.bold("Continuar")}: ${rec.label}  ${ui.green("← recomendado")}`);
     console.log(`  ${ui.cyan("2")}. Entrevista sobre o negócio`);
-    const analyzed = ws.loadInventory().hosts.some((h) => h.id === slugify(hostname()));
-    console.log(`  ${ui.cyan("3")}. ${analyzed ? "Atualizar a análise deste computador (mostra só o que mudou)" : "Analisar este computador"}`);
+    console.log(`  ${ui.cyan("3")}. Mapear a tecnologia (este computador ou a rede)`);
     console.log(`  ${ui.cyan("4")}. Montar o agente (gerar skills)`);
     console.log(`  ${ui.cyan("5")}. Revisar e aprovar (servidor MCP)`);
     console.log(`  ${ui.cyan("6")}. Ver e responder pendências`);
